@@ -1,0 +1,95 @@
+{
+  "$schema_version": "1.0",
+  "profile_type": "sheet",
+  "human_name_ru": "Лист горячекатаный",
+  "gost": "19903-2015",
+  "gost_full": "ГОСТ 19903-2015 Прокат листовой горячекатаный. Сортамент",
+  "description_ru": "Горячекатаный листовой прокат из углеродистой и низколегированной стали. Применяется для сварных конструкций, раскроя на металлорежущих станках, плазменной и лазерной резки.",
+  "stock_sheet_sizes_mm": [
+    { "length": 1250, "width": 2500 },
+    { "length": 1500, "width": 3000 },
+    { "length": 1500, "width": 6000 },
+    { "length": 2000, "width": 6000 },
+    { "length": 2500, "width": 6000 }
+  ],
+  "default_grade": "Ст3пс",
+  "available_grades": ["Ст3пс", "Ст3сп", "09Г2С", "С345"],
+  "axes": {
+    "length":    "x",
+    "width":     "y",
+    "thickness": "z"
+  },
+  "ocl_type": "sheet_good",
+  "source_urls": [
+    "https://docs.cntd.ru/document/1200127789",
+    "https://files.stroyinf.ru/Data2/1/4293754/4293754378.pdf"
+  ],
+  "_comment": "Диапазон толщин по стандарту: 0.5–160 мм. В каталоге — ходовые толщины для металлоконструкций и раскроя (1.5–20 мм). Расширять по потребности заказчика.",
+  "items": [
+    {
+      "typesize": "1.5",
+      "params":  { "thickness_mm": 1.5 },
+      "derived": { "mass_per_m2_kg": 11.78 }
+    },
+    {
+      "typesize": "2",
+      "params":  { "thickness_mm": 2 },
+      "derived": { "mass_per_m2_kg": 15.70 }
+    },
+    {
+      "typesize": "2.5",
+      "params":  { "thickness_mm": 2.5 },
+      "derived": { "mass_per_m2_kg": 19.63 }
+    },
+    {
+      "typesize": "3",
+      "params":  { "thickness_mm": 3 },
+      "derived": { "mass_per_m2_kg": 23.55 }
+    },
+    {
+      "typesize": "4",
+      "params":  { "thickness_mm": 4 },
+      "derived": { "mass_per_m2_kg": 31.40 }
+    },
+    {
+      "typesize": "5",
+      "params":  { "thickness_mm": 5 },
+      "derived": { "mass_per_m2_kg": 39.25 }
+    },
+    {
+      "typesize": "6",
+      "params":  { "thickness_mm": 6 },
+      "derived": { "mass_per_m2_kg": 47.10 }
+    },
+    {
+      "typesize": "8",
+      "params":  { "thickness_mm": 8 },
+      "derived": { "mass_per_m2_kg": 62.80 }
+    },
+    {
+      "typesize": "10",
+      "params":  { "thickness_mm": 10 },
+      "derived": { "mass_per_m2_kg": 78.50 }
+    },
+    {
+      "typesize": "12",
+      "params":  { "thickness_mm": 12 },
+      "derived": { "mass_per_m2_kg": 94.20 }
+    },
+    {
+      "typesize": "14",
+      "params":  { "thickness_mm": 14 },
+      "derived": { "mass_per_m2_kg": 109.90 }
+    },
+    {
+      "typesize": "16",
+      "params":  { "thickness_mm": 16 },
+      "derived": { "mass_per_m2_kg": 125.60 }
+    },
+    {
+      "typesize": "20",
+      "params":  { "thickness_mm": 20 },
+      "derived": { "mass_per_m2_kg": 157.00 }
+    }
+  ]
+}

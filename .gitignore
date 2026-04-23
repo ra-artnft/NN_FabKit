@@ -1,0 +1,24 @@
+# OS
+.DS_Store
+Thumbs.db
+# Editors
+.vscode/
+.idea/
+*.swp
+# Build
+build/
+*.rbz
+# Temp
+*.bak
+*.tmp
+# Python / Node (будущие компоненты)
+__pycache__/
+*.pyc
+node_modules/
+
+# Корпус примеров: содержит PII клиентов в путях .skp/notes
+# Структура (corpus/README.md, шаблоны) — отслеживается, сами примеры — нет
+corpus/examples/
+*.skp
+*.dump.json
+*.skp_dump.json

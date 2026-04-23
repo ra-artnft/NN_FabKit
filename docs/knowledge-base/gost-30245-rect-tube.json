@@ -1,0 +1,165 @@
+{
+  "$schema_version": "1.0",
+  "profile_type": "rect_tube",
+  "human_name_ru": "Труба профильная квадратная и прямоугольная",
+  "gost": "30245-2003",
+  "gost_full": "ГОСТ 30245-2003 Профили стальные гнутые замкнутые сварные квадратные и прямоугольные для строительных конструкций. Технические условия",
+  "description_ru": "Стальные гнутые замкнутые сварные профили. Применяются для строительных стальных конструкций, каркасов мебели, металлоконструкций общего назначения.",
+  "stock_lengths_mm": [6000, 12000],
+  "default_grade": "Ст3сп",
+  "available_grades": ["Ст3сп", "Ст3пс", "09Г2С", "С345"],
+  "axes": {
+    "length": "x",
+    "width":  "y",
+    "height": "z"
+  },
+  "ocl_type": "dimensional",
+  "radius_rule": "R = 1.5*t для t <= 6 мм, R = 2.0*t для t > 6 мм; фактические значения из таблиц стандарта могут отличаться в пределах 0.5 мм",
+  "source_urls": [
+    "https://docs.cntd.ru/document/1200036308",
+    "https://files.stroyinf.ru/Data/84/8428.pdf"
+  ],
+  "_comment": "Начальный набор типоразмеров — популярные в мебельных и металлоконструкторских задачах. Полный сортамент ~150+ позиций, расширять итеративно.",
+  "items": [
+    {
+      "typesize": "15x15x1.5",
+      "params":  { "width_mm": 15, "height_mm": 15, "wall_mm": 1.5, "outer_radius_mm": 2.25 },
+      "derived": { "mass_per_m_kg": 0.59 }
+    },
+    {
+      "typesize": "20x20x1.5",
+      "params":  { "width_mm": 20, "height_mm": 20, "wall_mm": 1.5, "outer_radius_mm": 2.25 },
+      "derived": { "mass_per_m_kg": 0.82 }
+    },
+    {
+      "typesize": "20x20x2",
+      "params":  { "width_mm": 20, "height_mm": 20, "wall_mm": 2, "outer_radius_mm": 3.0 },
+      "derived": { "mass_per_m_kg": 1.07 }
+    },
+    {
+      "typesize": "25x25x1.5",
+      "params":  { "width_mm": 25, "height_mm": 25, "wall_mm": 1.5, "outer_radius_mm": 2.25 },
+      "derived": { "mass_per_m_kg": 1.05 }
+    },
+    {
+      "typesize": "25x25x2",
+      "params":  { "width_mm": 25, "height_mm": 25, "wall_mm": 2, "outer_radius_mm": 3.0 },
+      "derived": { "mass_per_m_kg": 1.39 }
+    },
+    {
+      "typesize": "40x20x1.5",
+      "params":  { "width_mm": 40, "height_mm": 20, "wall_mm": 1.5, "outer_radius_mm": 2.25 },
+      "derived": { "mass_per_m_kg": 1.34 }
+    },
+    {
+      "typesize": "40x20x2",
+      "params":  { "width_mm": 40, "height_mm": 20, "wall_mm": 2, "outer_radius_mm": 3.0 },
+      "derived": { "mass_per_m_kg": 1.74 }
+    },
+    {
+      "typesize": "40x25x2",
+      "params":  { "width_mm": 40, "height_mm": 25, "wall_mm": 2, "outer_radius_mm": 3.0 },
+      "derived": { "mass_per_m_kg": 1.90 }
+    },
+    {
+      "typesize": "40x40x2",
+      "params":  { "width_mm": 40, "height_mm": 40, "wall_mm": 2, "outer_radius_mm": 3.0 },
+      "derived": { "mass_per_m_kg": 2.31 }
+    },
+    {
+      "typesize": "40x40x3",
+      "params":  { "width_mm": 40, "height_mm": 40, "wall_mm": 3, "outer_radius_mm": 4.5 },
+      "derived": { "mass_per_m_kg": 3.36 }
+    },
+    {
+      "typesize": "50x25x2",
+      "params":  { "width_mm": 50, "height_mm": 25, "wall_mm": 2, "outer_radius_mm": 3.0 },
+      "derived": { "mass_per_m_kg": 2.21 }
+    },
+    {
+      "typesize": "50x50x2",
+      "params":  { "width_mm": 50, "height_mm": 50, "wall_mm": 2, "outer_radius_mm": 3.0 },
+      "derived": { "mass_per_m_kg": 2.93 }
+    },
+    {
+      "typesize": "50x50x3",
+      "params":  { "width_mm": 50, "height_mm": 50, "wall_mm": 3, "outer_radius_mm": 4.5 },
+      "derived": { "mass_per_m_kg": 4.30 }
+    },
+    {
+      "typesize": "60x40x2",
+      "params":  { "width_mm": 60, "height_mm": 40, "wall_mm": 2, "outer_radius_mm": 3.0 },
+      "derived": { "mass_per_m_kg": 2.93 }
+    },
+    {
+      "typesize": "60x40x3",
+      "params":  { "width_mm": 60, "height_mm": 40, "wall_mm": 3, "outer_radius_mm": 4.5 },
+      "derived": { "mass_per_m_kg": 4.30 }
+    },
+    {
+      "typesize": "60x60x3",
+      "params":  { "width_mm": 60, "height_mm": 60, "wall_mm": 3, "outer_radius_mm": 4.5 },
+      "derived": { "mass_per_m_kg": 5.24 }
+    },
+    {
+      "typesize": "80x40x3",
+      "params":  { "width_mm": 80, "height_mm": 40, "wall_mm": 3, "outer_radius_mm": 4.5 },
+      "derived": { "mass_per_m_kg": 5.24 }
+    },
+    {
+      "typesize": "80x60x3",
+      "params":  { "width_mm": 80, "height_mm": 60, "wall_mm": 3, "outer_radius_mm": 4.5 },
+      "derived": { "mass_per_m_kg": 6.18 }
+    },
+    {
+      "typesize": "80x80x3",
+      "params":  { "width_mm": 80, "height_mm": 80, "wall_mm": 3, "outer_radius_mm": 4.5 },
+      "derived": { "mass_per_m_kg": 7.11 }
+    },
+    {
+      "typesize": "80x80x4",
+      "params":  { "width_mm": 80, "height_mm": 80, "wall_mm": 4, "outer_radius_mm": 6.0 },
+      "derived": { "mass_per_m_kg": 9.35 }
+    },
+    {
+      "typesize": "100x50x3",
+      "params":  { "width_mm": 100, "height_mm": 50, "wall_mm": 3, "outer_radius_mm": 4.5 },
+      "derived": { "mass_per_m_kg": 6.60 }
+    },
+    {
+      "typesize": "100x60x3",
+      "params":  { "width_mm": 100, "height_mm": 60, "wall_mm": 3, "outer_radius_mm": 4.5 },
+      "derived": { "mass_per_m_kg": 7.11 }
+    },
+    {
+      "typesize": "100x100x4",
+      "params":  { "width_mm": 100, "height_mm": 100, "wall_mm": 4, "outer_radius_mm": 6.0 },
+      "derived": { "mass_per_m_kg": 11.87 }
+    },
+    {
+      "typesize": "120x80x4",
+      "params":  { "width_mm": 120, "height_mm": 80, "wall_mm": 4, "outer_radius_mm": 6.0 },
+      "derived": { "mass_per_m_kg": 12.38 }
+    },
+    {
+      "typesize": "120x120x4",
+      "params":  { "width_mm": 120, "height_mm": 120, "wall_mm": 4, "outer_radius_mm": 6.0 },
+      "derived": { "mass_per_m_kg": 14.39 }
+    },
+    {
+      "typesize": "140x140x5",
+      "params":  { "width_mm": 140, "height_mm": 140, "wall_mm": 5, "outer_radius_mm": 7.5 },
+      "derived": { "mass_per_m_kg": 21.10 }
+    },
+    {
+      "typesize": "160x160x5",
+      "params":  { "width_mm": 160, "height_mm": 160, "wall_mm": 5, "outer_radius_mm": 7.5 },
+      "derived": { "mass_per_m_kg": 24.25 }
+    },
+    {
+      "typesize": "180x180x6",
+      "params":  { "width_mm": 180, "height_mm": 180, "wall_mm": 6, "outer_radius_mm": 9.0 },
+      "derived": { "mass_per_m_kg": 32.68 }
+    }
+  ]
+}

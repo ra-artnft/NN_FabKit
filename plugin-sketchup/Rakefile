@@ -1,0 +1,117 @@
+# encoding: UTF-8
+#
+# Сборка .rbz без gem-зависимостей:
+#   - Windows: System.IO.Compression.ZipFile через PowerShell
+#             (не Compress-Archive — тот пишет "\"-разделители, ломающие macOS-установку).
+#   - macOS/Linux: zip
+#
+# Rakefile — обычный Ruby-скрипт, запускается ВНЕ SketchUp.
+# Здесь разрешён обычный require (в отличие от src/, где только Sketchup.require).
+
+require "rake"
+require "rake/clean"
+require "fileutils"
+
+ROOT         = File.expand_path(__dir__)
+SRC_DIR      = File.join(ROOT, "src")
+BUILD_DIR    = File.join(ROOT, "build")
+VERSION_FILE = File.join(SRC_DIR, "nn_fabkit", "version.rb")
+
+CLEAN.include(BUILD_DIR)
+
+def plugin_version
+  # Версию читаем регэкспом — require нельзя: src/ не в $LOAD_PATH,
+  # и намеренно: Rakefile не должен грузить код плагина.
+  content = File.read(VERSION_FILE, encoding: "UTF-8")
+  m = content.match(/VERSION\s*=\s*"([^"]+)"/)
+  raise "Не удалось прочитать VERSION из #{VERSION_FILE}" unless m
+  m[1]
+end
+
+def windows?
+  RUBY_PLATFORM =~ /mswin|mingw|cygwin/i
+end
+
+def zip_contents(src_dir, out_zip)
+  if windows?
+    # Используем System.IO.Compression.ZipFile (не Compress-Archive) —
+    # Compress-Archive хранит разделители путей как "\", что нестандартно
+    # и ломает установку .rbz на macOS. .NET ZipFile пишет "/" по спеке.
+    # CreateFromDirectory записывает СОДЕРЖИМОЕ папки с корня архива
+    # (не саму папку верхним уровнем) при includeBaseDirectory = $false.
+    src = src_dir.tr("/", "\\")
+    dst = out_zip.tr("/", "\\")
+    ps = [
+      "Add-Type -AssemblyName System.IO.Compression.FileSystem",
+      "if (Test-Path -LiteralPath '#{dst}') { Remove-Item -LiteralPath '#{dst}' -Force }",
+      "[System.IO.Compression.ZipFile]::CreateFromDirectory('#{src}', '#{dst}', " \
+        "[System.IO.Compression.CompressionLevel]::Optimal, $false)"
+    ].join("; ")
+    # Массив аргументов в sh → минует cmd.exe → безопасно с кириллицей в путях.
+    sh "powershell", "-NoProfile", "-NonInteractive", "-Command", ps
+  else
+    # zip -r . из src_dir → содержимое идёт от корня архива
+    Dir.chdir(src_dir) do
+      sh "zip", "-r", out_zip, "."
+    end
+  end
+end
+
+desc "Собрать .rbz (по умолчанию)"
+task :build do
+  version = plugin_version
+  FileUtils.mkdir_p(BUILD_DIR)
+  rbz_path = File.join(BUILD_DIR, "nn_fabkit-#{version}.rbz")
+  FileUtils.rm_f(rbz_path)
+
+  tmp_zip = File.join(BUILD_DIR, "nn_fabkit-#{version}.zip")
+  FileUtils.rm_f(tmp_zip)
+
+  zip_contents(SRC_DIR, tmp_zip)
+  FileUtils.mv(tmp_zip, rbz_path)
+
+  puts "Собран: #{rbz_path}"
+end
+
+def sketchup_plugins_dir
+  # Windows: %APPDATA%\SketchUp\SketchUp <год>\SketchUp\Plugins
+  # macOS:   ~/Library/Application Support/SketchUp <год>/SketchUp/Plugins
+  bases = if windows?
+            appdata = ENV["APPDATA"]
+            return nil unless appdata
+            Dir.glob(File.join(appdata, "SketchUp", "SketchUp *"))
+          else
+            Dir.glob(File.join(Dir.home, "Library", "Application Support", "SketchUp *"))
+          end
+
+  # Выбираем самый свежий (по имени — "SketchUp 2024" > "SketchUp 2021").
+  picked = bases.sort.last
+  return nil unless picked
+  plugins = File.join(picked, "SketchUp", "Plugins")
+  Dir.exist?(File.dirname(plugins)) ? plugins : nil
+end
+
+desc "Скопировать src/ в Plugins SketchUp (с подтверждением)"
+task :install do
+  target = sketchup_plugins_dir
+  if target.nil?
+    puts "Папка Plugins SketchUp не найдена. " \
+         "Установи через Extension Manager, .rbz в build/."
+    next
+  end
+
+  print "Скопировать содержимое src/ в #{target}? [y/N] "
+  answer = $stdin.gets.to_s.strip.downcase
+  unless %w[y yes].include?(answer)
+    puts "Отмена."
+    next
+  end
+
+  FileUtils.mkdir_p(target)
+  Dir.glob(File.join(SRC_DIR, "*")).each do |entry|
+    FileUtils.cp_r(entry, target)
+  end
+  puts "Скопировано в: #{target}"
+end
+
+task default: :build
