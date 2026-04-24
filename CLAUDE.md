@@ -12,7 +12,7 @@
 2. Корпус ([`corpus/examples/`](corpus/)) собирается из дампов + `notes.md` с tacit knowledge (ADR-015).
 3. Claude через Project Knowledge / MCP видит корпус как контекст — квази-обучение.
 4. По текстовому запросу заказчика Claude генерирует **типовые модели по образцу**, повторяя стиль и паттерны корпуса.
-5. Параллельно: дорабатываем существующие DC заказчика (Профильная труба, Лист — см. [08-reference-components-analysis](docs/knowledge-base/08-reference-components-analysis.md)) так, чтобы они **корректно экспортировались в IGES** (через SolidWorks-посредника на MVP — ADR-009). Доработка значит: реальные радиусы, корректная стенка трубы / толщина листа, sane bounds, метаданные в `nn_metalfab` — а не пиcaтельство своего IGES-экспортёра.
+5. Параллельно: дорабатываем существующие DC заказчика (Профильная труба, Лист — см. [08-reference-components-analysis](docs/knowledge-base/08-reference-components-analysis.md)) так, чтобы они проходили путь до **собственного IGES-конвертёра** ([ADR-017](docs/knowledge-base/09-architecture-decisions.md) — заказчик отказался от SolidWorks-посредника, ADR-009 superseded). Доработка значит: переход с LOD-0 (монолитный box, как у заказчика сейчас) на LOD-1 (реальные радиусы + стенка) и LOD-2 (с отверстиями для NC) — см. [ADR-014](docs/knowledge-base/09-architecture-decisions.md); плюс метаданные в `nn_metalfab` (тип, ГОСТ, типоразмер, марка, толщина, радиус) для извлечения BREP-структуры конвертёром. Сам IGES-райтер живёт в `app-desktop`/standalone, не в плагине.
 
 **Архитектура зонтика** (ADR-013):
 - **`NN FabKit`** (эта папка) — зонтик / оболочка всего продукта. Общее ядро: MCP-мост, DC-интеграция, OCL-разметка по именам, LayOut-генератор, движок параметрического генератора. Namespace `NN::FabKit`.
@@ -62,6 +62,8 @@ NN_FabKit/
 | Архитектурные решения (ADR) | [docs/knowledge-base/09-architecture-decisions.md](docs/knowledge-base/09-architecture-decisions.md) |
 | Корпус примеров (структура, статус, правила) | [corpus/README.md](corpus/README.md) |
 | Шаблон `notes.md` для нового примера | [docs/knowledge-base/templates/example-notes.template.md](docs/knowledge-base/templates/example-notes.template.md) |
+| Продуктовые спецификации (specs) | [docs/specs/](docs/specs/) |
+| spec-01: доработка DC под собственный IGES-конвертёр | [docs/specs/spec-01-dc-rework-for-iges.md](docs/specs/spec-01-dc-rework-for-iges.md) |
 | История изменений | [CHANGELOG.md](CHANGELOG.md), [docs/knowledge-base/CHANGELOG.md](docs/knowledge-base/CHANGELOG.md) |
 
 **По мере роста плагина дополнять**: новые UI-диалоги, генераторы профилей, экспортёры — каждый получает строку в этой таблице.
@@ -135,4 +137,7 @@ rake clean      # удалить build/
 - Не пересматривать существующие ADR — оформляем новый ADR со ссылкой на предшественника.
 - Не лезть в DC-формулы для топологии — формулы умеют только масштабировать (ADR-002).
 - Не коммитить `corpus/examples/` в git. Внутри `model.dump.json` поле `model.path` содержит ФИО клиентов (Yandex.Disk paths). Папка целиком в `.gitignore`. Если корпус нужно опубликовать — отдельная процедура с обезличиванием и ревью.
-- Не писать свой IGES-экспортёр сейчас. Этап 1–2: дорабатываем DC так, чтобы IGES-конвертёр у SolidWorks-исполнителя заказчика не споткнулся. Свой STEP/IGES — этап 3+ (ADR-009).
+- Не цитировать **ADR-009** и **ADR-003** как актуальные — они superseded:
+  - **ADR-017** supersedes ADR-009 — собственный IGES-конвертёр в MVP (на минимальном подмножестве IGES 5.3: line/arc/cylinder/plane), плюс DXF для листа. SolidWorks-посредник убран.
+  - **ADR-016** supersedes ADR-003 — OCL только референс. Наш плагин **не пишет** OCL-словарь `lairdubois_opencutlist_*` на материалы, даже несмотря на то, что у заказчика в production-моделях он повсеместно. Свой раскрой строим без оглядки на OCL.
+- Не оптимизировать под «красивую визуализацию» в ущерб бюджету геометрии. ADR-014 фиксирует лимиты faces/edges на типовую деталь и три уровня детализации (LOD-0 монолит → LOD-1 с радиусами → LOD-2 с отверстиями для NC).

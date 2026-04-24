@@ -51,7 +51,6 @@ rake build
 Закрыто:
 - Команда «Dump в JSON» — `Extensions → NN FabKit → Dump в JSON…` в плагине v0.2.0 оборачивает `docs/knowledge-base/tools/skp_dump.rb`.
 
-Следующее:
+Следующее (этап 1, MetalFab):
+- **Доработка DC «Профильная труба» и «Лист» под собственный IGES-конвертёр** — детальный spec в [docs/specs/spec-01-dc-rework-for-iges.md](docs/specs/spec-01-dc-rework-for-iges.md). Цель — переход с LOD-0 (box) на LOD-1 (с радиусами и стенкой) + метаданные `nn_metalfab`. Привязка: ADR-002, ADR-005, ADR-014, ADR-017 (собственный IGES-конвертёр в MVP, supersedes ADR-009).
 - Форк `mhyrr/sketchup-mcp` как база TCP-моста ([ADR-001](docs/knowledge-base/09-architecture-decisions.md)).
-- Параметрический генератор профилей в namespace `NN::MetalFab` ([ADR-002](docs/knowledge-base/09-architecture-decisions.md)).
-- Attribute dictionary `nn_metalfab` для металл-компонентов ([ADR-005](docs/knowledge-base/09-architecture-decisions.md)).
