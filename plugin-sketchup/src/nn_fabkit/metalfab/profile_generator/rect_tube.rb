@@ -39,7 +39,9 @@ module NN
           ents.clear!
 
           profile_face = build_profile(ents, width_mm, height_mm, wall_mm, outer_radius_mm)
+          smooth_arc_edges_in_profile(profile_face, width_mm, height_mm)
           extrude(ents, profile_face, length_mm)
+          smooth_vertical_arc_edges(ents, length_mm, width_mm, height_mm)
 
           AttrDict.write_rect_tube(
             definition,
@@ -165,6 +167,56 @@ module NN
           profile_face.followme([path])
           path.erase! if path && path.valid?
           nil
+        end
+
+        # Помечает arc-edges профиля как soft+smooth: визуально дуга сегментируется
+        # из 8 коротких рёбер в одну гладкую кривую. Геометрия не меняется
+        # (NC-конвертёр по-прежнему получает 8 точек на радиус, плюс аналитический
+        # радиус в nn_metalfab.outer_radius_mm). Меняется только rendering.
+        # Прямые рёбра (топ/низ/лево/право прямоугольника) остаются hard.
+        def self.smooth_arc_edges_in_profile(face, width_mm, height_mm)
+          return unless face && face.valid?
+          tol = 1.0e-3.mm
+          hw = width_mm.mm / 2.0
+          hh = height_mm.mm / 2.0
+          face.edges.each do |edge|
+            p1 = edge.start.position
+            p2 = edge.end.position
+            on_right  = (p1.x - hw).abs < tol && (p2.x - hw).abs < tol
+            on_left   = (p1.x + hw).abs < tol && (p2.x + hw).abs < tol
+            on_top    = (p1.y - hh).abs < tol && (p2.y - hh).abs < tol
+            on_bottom = (p1.y + hh).abs < tol && (p2.y + hh).abs < tol
+            next if on_right || on_left || on_top || on_bottom
+
+            # Это arc-edge (на скруглении угла outer или на любом ребре inner loop —
+            # inner лежит строго внутри outer и не касается его cardinal-границ).
+            edge.soft   = true
+            edge.smooth = true
+          end
+        end
+
+        # После Follow Me каждый arc-сегмент порождает вертикальное ребро длиной
+        # length_mm — на боковой поверхности трубы видны полоски каждые 11.25°.
+        # Помечаем все вертикальные рёбра, не лежащие на 4 «угловых» прямых
+        # (X=±hw, Y=±hh) как soft+smooth — труба смотрится как один цилиндр,
+        # а не как 32-гранник.
+        def self.smooth_vertical_arc_edges(entities, length_mm, width_mm, height_mm)
+          tol = 1.0e-3.mm
+          target_len = length_mm.mm
+          hw = width_mm.mm / 2.0
+          hh = height_mm.mm / 2.0
+          entities.grep(Sketchup::Edge).each do |edge|
+            v = edge.line[1]  # direction vector
+            next unless v.parallel?(Z_AXIS)
+            next unless (edge.length - target_len).abs < tol
+            p = edge.start.position
+            on_corner_line =
+              (p.x - hw).abs < tol || (p.x + hw).abs < tol ||
+              (p.y - hh).abs < tol || (p.y + hh).abs < tol
+            next if on_corner_line
+            edge.soft   = true
+            edge.smooth = true
+          end
         end
 
         def self.warn_budget(definition, faces, edges)
