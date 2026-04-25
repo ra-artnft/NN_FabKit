@@ -1,3 +1,15 @@
+# CHANGELOG — обновление базы знаний 24.04.2026 (часть 2)
+
+## ADR-018 добавлен — MCP-мост собственной реализации (supersedes ADR-001)
+
+`mhyrr/sketchup-mcp`, на который опирался ADR-001 как «MIT-licensed base», на самом деле не имеет лицензии (`gh api .../sketchup-mcp` возвращает `license: null`, файла LICENSE в репо нет). По умолчанию это all-rights-reserved — форкать или копировать код нельзя.
+
+ADR-018 фиксирует pivot: пишем собственный минимальный TCP-мост + Python MCP server в монорепо NN FabKit. Архитектурные паттерны (TCP/JSON-RPC/timer polling) — общеизвестные, не защищены копирайтом. Код mhyrr не используем, только публично описанные идеи из README.
+
+ADR-001 помечен как superseded ADR-018. План реализации — `docs/specs/spec-02-mcp-bridge.md`.
+
+---
+
 # CHANGELOG — обновление базы знаний 24.04.2026
 
 ## Обновлён `gost-30245-rect-tube.json`

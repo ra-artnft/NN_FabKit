@@ -74,6 +74,8 @@ NN_FabKit/
 | Шаблон `notes.md` для нового примера | [docs/knowledge-base/templates/example-notes.template.md](docs/knowledge-base/templates/example-notes.template.md) |
 | Продуктовые спецификации (specs) | [docs/specs/](docs/specs/) |
 | spec-01: доработка DC под собственный IGES-конвертёр | [docs/specs/spec-01-dc-rework-for-iges.md](docs/specs/spec-01-dc-rework-for-iges.md) |
+| spec-02: MCP-мост Claude ⇄ SketchUp (TCP + Python FastMCP) | [docs/specs/spec-02-mcp-bridge.md](docs/specs/spec-02-mcp-bridge.md) |
+| spec-03: UI-редизайн плагина (HtmlDialog Inspector) | [docs/specs/spec-03-plugin-ui-redesign.md](docs/specs/spec-03-plugin-ui-redesign.md) |
 | История изменений | [CHANGELOG.md](CHANGELOG.md), [docs/knowledge-base/CHANGELOG.md](docs/knowledge-base/CHANGELOG.md) |
 
 **По мере роста плагина дополнять**: новые UI-диалоги, генераторы профилей, экспортёры — каждый получает строку в этой таблице.

@@ -2,6 +2,16 @@
 
 Формат — по [Keep a Changelog](https://keepachangelog.com/ru/1.1.0/). Версии монорепо независимы от версии плагина; версия плагина живёт в `plugin-sketchup/src/nn_fabkit/version.rb`.
 
+## [v0.0.12] — 2026-04-24
+
+### Added
+- `docs/specs/spec-02-mcp-bridge.md` — спецификация MCP-моста SketchUp ⇄ Claude. Архитектура: TCP сервер в плагине (`NN::FabKit::Mcp::Server`, 127.0.0.1:9876, line-delimited JSON-RPC 2.0, `UI.start_timer` polling) + Python пакет `nn_fabkit_mcp` (FastMCP framework). MVP tools: `eval_ruby`, `get_scene_info`, `dump_model` плюс высокоуровневые. Цель — ускорить итерации разработки на порядок (3 минуты install цикл → 5 секунд eval_ruby).
+- `docs/specs/spec-03-plugin-ui-redesign.md` — спецификация UI редизайна. Замена inputbox-driven workflow на постоянную боковую панель «NN FabKit Inspector» через `UI::HtmlDialog`. Vanilla JS + минимальный CSS (без React/build step). Sortament browser + Selection inspector + Toolbar. Default scope — UI/UX (A); visual brand (логотип, иконки, цветовая схема — B) — отдельный sprint при подтверждении заказчиком.
+- **ADR-018 добавлен в `docs/knowledge-base/09-architecture-decisions.md`** — MCP-мост собственной реализации, supersedes ADR-001. Причина: `mhyrr/sketchup-mcp` (на которое ссылался ADR-001) не имеет LICENSE — по умолчанию all-rights-reserved, форкать нельзя. Используем только публично описанные паттерны (TCP+JSON-RPC+timer polling — общеизвестные идиомы), код не копируем.
+
+### Changed
+- ADR-001 помечен как `superseded ADR-018` в `memory/reference_adr_map.md` и в Notion ADR-странице.
+
 ## [v0.0.11] — 2026-04-24
 
 ### Added
