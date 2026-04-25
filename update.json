@@ -1,5 +1,5 @@
 {
-  "latest_version": "0.4.1",
-  "rbz_url": "https://github.com/ra-artnft/NN_FabKit/releases/download/v0.4.1/nn_fabkit-0.4.1.rbz",
-  "release_notes": "v0.4.1 — Канал релизов на GitHub.\n\nDefault URL обновлений в плагине теперь указывает на этот manifest, поэтому «Проверить обновления…» работает без ручной настройки. Содержимое плагина идентично v0.4.0 (IGES wireframe экспорт + Updater)."
+  "latest_version": "0.5.0",
+  "rbz_url": "https://github.com/ra-artnft/NN_FabKit/releases/download/v0.5.0/nn_fabkit-0.5.0.rbz",
+  "release_notes": "v0.5.0 — MCP-мост Claude ⇄ SketchUp.\n\nПлагин получил TCP сервер (127.0.0.1:9876, JSON-RPC) и Python-пакет nn-fabkit-mcp. После регистрации `claude mcp add nn-fabkit -- python -m nn_fabkit_mcp` Claude может напрямую выполнять Ruby в SketchUp, читать состояние модели и запускать SkpDump через MCP-вызовы. Подробности и install-workflow — в mcp-bridge/README.md."
 }

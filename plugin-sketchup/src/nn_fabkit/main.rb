@@ -18,6 +18,13 @@ module NN
     Sketchup.require "nn_fabkit/updater"
     Sketchup.require "nn_fabkit/commands/check_update"
 
+    # MCP мост — TCP сервер JSON-RPC для удалённого управления Claude'ом.
+    # Сам сервер по умолчанию НЕ стартует (запускается явно из меню — security baseline).
+    Sketchup.require "nn_fabkit/mcp/handlers"
+    Sketchup.require "nn_fabkit/mcp/jsonrpc"
+    Sketchup.require "nn_fabkit/mcp/server"
+    Sketchup.require "nn_fabkit/commands/mcp_control"
+
     Sketchup.require "nn_fabkit/ui/menu"
 
     unless file_loaded?(__FILE__)

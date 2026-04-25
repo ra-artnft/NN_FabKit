@@ -16,6 +16,12 @@ module NN
           metalfab.add_separator
           metalfab.add_item("Экспорт «Профильная труба» в IGES…")   { export_iges }
 
+          # Submenu MCP сервер — мост Claude ⇄ SketchUp
+          mcp = parent.add_submenu("MCP сервер")
+          mcp.add_item("Запустить…")    { mcp_start }
+          mcp.add_item("Остановить")    { mcp_stop }
+          mcp.add_item("Статус")        { mcp_status }
+
           parent.add_separator
           parent.add_item("Проверить обновления…")                  { check_update }
           parent.add_item("Сменить URL обновлений…")                { change_update_url }
@@ -57,11 +63,25 @@ module NN
           NN::FabKit::Commands::CheckUpdate.change_url
         end
 
+        def self.mcp_start
+          NN::FabKit::Commands::McpControl.start
+        end
+
+        def self.mcp_stop
+          NN::FabKit::Commands::McpControl.stop
+        end
+
+        def self.mcp_status
+          NN::FabKit::Commands::McpControl.status
+        end
+
         def self.show_about
+          mcp = NN::FabKit::Mcp.status
+          mcp_line = mcp[:running] ? "MCP: 🟢 #{mcp[:host]}:#{mcp[:port]}" : "MCP: ⚪ не запущен"
           ::UI.messagebox(
             "NN FabKit v#{NN::FabKit::VERSION}\n\n" \
             "Плагин для проектирования металлоконструкций и мебели.\n\n" \
-            "SketchUp #{Sketchup.version}"
+            "SketchUp #{Sketchup.version}\n#{mcp_line}"
           )
         end
       end

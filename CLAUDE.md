@@ -66,6 +66,14 @@ NN_FabKit/
 | MetalFab — UI-команда экспорта в IGES | [plugin-sketchup/src/nn_fabkit/metalfab/commands/export_iges.rb](plugin-sketchup/src/nn_fabkit/metalfab/commands/export_iges.rb) |
 | Удалённое обновление плагина (manifest URL → .rbz) | [plugin-sketchup/src/nn_fabkit/updater.rb](plugin-sketchup/src/nn_fabkit/updater.rb) |
 | UI-команды updater'а (Проверить / Сменить URL) | [plugin-sketchup/src/nn_fabkit/commands/check_update.rb](plugin-sketchup/src/nn_fabkit/commands/check_update.rb) |
+| **MCP-мост Ruby (TCP сервер в SU)** | [plugin-sketchup/src/nn_fabkit/mcp/server.rb](plugin-sketchup/src/nn_fabkit/mcp/server.rb) |
+| MCP — JSON-RPC dispatch | [plugin-sketchup/src/nn_fabkit/mcp/jsonrpc.rb](plugin-sketchup/src/nn_fabkit/mcp/jsonrpc.rb) |
+| MCP — handlers (eval_ruby / get_scene_info / dump_model) | [plugin-sketchup/src/nn_fabkit/mcp/handlers.rb](plugin-sketchup/src/nn_fabkit/mcp/handlers.rb) |
+| MCP — UI команды (Start/Stop/Status) | [plugin-sketchup/src/nn_fabkit/commands/mcp_control.rb](plugin-sketchup/src/nn_fabkit/commands/mcp_control.rb) |
+| **MCP-мост Python (FastMCP)** | [mcp-bridge/](mcp-bridge/) |
+| MCP — Python server | [mcp-bridge/src/nn_fabkit_mcp/server.py](mcp-bridge/src/nn_fabkit_mcp/server.py) |
+| MCP — TCP transport | [mcp-bridge/src/nn_fabkit_mcp/transport.py](mcp-bridge/src/nn_fabkit_mcp/transport.py) |
+| MCP — install workflow | [mcp-bridge/README.md](mcp-bridge/README.md) |
 | Сортамент: профильная труба | [docs/knowledge-base/gost-30245-rect-tube.json](docs/knowledge-base/gost-30245-rect-tube.json) |
 | Сортамент: лист г/к | [docs/knowledge-base/gost-19903-hot-sheet.json](docs/knowledge-base/gost-19903-hot-sheet.json) |
 | Сортамент: марки стали | [docs/knowledge-base/steel-grades.json](docs/knowledge-base/steel-grades.json) |

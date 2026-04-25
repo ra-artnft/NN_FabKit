@@ -2,6 +2,19 @@
 
 Формат — по [Keep a Changelog](https://keepachangelog.com/ru/1.1.0/). Версии монорепо независимы от версии плагина; версия плагина живёт в `plugin-sketchup/src/nn_fabkit/version.rb`.
 
+## [v0.0.13] — 2026-04-24
+
+### Added
+- Плагин v0.5.0: **MCP-мост Claude ⇄ SketchUp** (Sprint A spec-02). Ruby сторона — `NN::FabKit::Mcp::Server` (TCP 127.0.0.1:9876, JSON-RPC 2.0, line-delimited, connection-per-request, `UI.start_timer` polling без Thread.new). MVP tools: `eval_ruby` (universal escape hatch с захватом stdout), `get_scene_info` (быстрый снапшот с selection brief), `dump_model` (полный SkpDump через MCP).
+- Меню `Extensions → NN FabKit → MCP сервер → Запустить / Остановить / Статус`. Запуск явный с предупреждением про мощь `eval_ruby`. По умолчанию сервер не активен — открытие порта только по явному действию пользователя.
+- `mcp-bridge/` — отдельный Python пакет `nn-fabkit-mcp` (FastMCP framework). Tools зеркалят Ruby-сторону. Установка: `pip install -e mcp-bridge/` + `claude mcp add nn-fabkit -- python -m nn_fabkit_mcp`. README с полным install-workflow.
+- В `Extensions → NN FabKit → О плагине…` добавлен индикатор статуса MCP-сервера.
+
+### Implementation notes
+- Архитектурный pivot — **ADR-018 supersedes ADR-001**: вместо форка `mhyrr/sketchup-mcp` (license=null, форкать нельзя) — собственная реализация, опираясь на публично описанные паттерны (TCP+JSON-RPC+timer polling — общеизвестные идиомы). Код mhyrr НЕ копировался.
+- Папка `mcp-corpus/` оставлена под свою роль (MCP к корпусу примеров, ADR-015), `mcp-bridge/` — новая папка под мост к работающему SketchUp процессу. В Claude Code оба сервера могут работать одновременно.
+- Предупреждение безопасности: после запуска MCP сервера любой процесс на 127.0.0.1 может выполнять `eval_ruby` в SU. Bind строго на loopback, никаких external соединений.
+
 ## [v0.0.12] — 2026-04-24
 
 ### Added
