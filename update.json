@@ -1,0 +1,5 @@
+{
+  "latest_version": "0.4.1",
+  "rbz_url": "https://github.com/ra-artnft/NN_FabKit/releases/download/v0.4.1/nn_fabkit-0.4.1.rbz",
+  "release_notes": "v0.4.1 — Канал релизов на GitHub.\n\nDefault URL обновлений в плагине теперь указывает на этот manifest, поэтому «Проверить обновления…» работает без ручной настройки. Содержимое плагина идентично v0.4.0 (IGES wireframe экспорт + Updater)."
+}

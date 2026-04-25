@@ -70,28 +70,11 @@ module NN
         # Проверка / опрос URL манифеста. Возвращает URL или nil (если пользователь отменил).
         def ensure_manifest_url
           current = Updater.manifest_url
-          if current == Updater::DEFAULT_MANIFEST_URL
-            entered = ::UI.inputbox(
-              ["Manifest URL"],
-              [""],
-              [""],
-              "NN FabKit — задать URL обновлений"
-            )
-            return nil unless entered
-            url = entered.first.to_s.strip
-            if url.empty?
-              ::UI.messagebox(
-                "URL не задан. Manifest должен указывать на JSON вида:\n\n" \
-                "{\n  \"latest_version\": \"0.4.1\",\n  \"rbz_url\": \"https://.../nn_fabkit-0.4.1.rbz\",\n" \
-                "  \"release_notes\": \"...\"\n}"
-              )
-              return nil
-            end
-            Updater.manifest_url = url
-            url
-          else
-            current
-          end
+          # Default URL теперь — официальный канал релизов на GitHub. Если он
+          # уже стоит — используем без переспроса. Кастомный URL можно задать
+          # отдельной командой «Сменить URL обновлений…».
+          current
+        end
         end
 
         # Отдельная команда для смены URL.

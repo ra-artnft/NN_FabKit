@@ -20,7 +20,7 @@ module NN
     # URL manifest'а живёт в SketchUp::Sketchup.read_default/write_default —
     # сохраняется между сессиями. Дефолт — заглушка, заказчик устанавливает свой.
     module Updater
-      DEFAULT_MANIFEST_URL = "https://example.invalid/nn_fabkit/update.json".freeze
+      DEFAULT_MANIFEST_URL = "https://raw.githubusercontent.com/ra-artnft/NN_FabKit/master/update.json".freeze
       PREF_SECTION = "NN_FabKit".freeze
       PREF_KEY     = "update_manifest_url".freeze
 

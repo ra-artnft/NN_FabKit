@@ -2,6 +2,15 @@
 
 Формат — по [Keep a Changelog](https://keepachangelog.com/ru/1.1.0/). Версии монорепо независимы от версии плагина; версия плагина живёт в `plugin-sketchup/src/nn_fabkit/version.rb`.
 
+## [v0.0.11] — 2026-04-24
+
+### Added
+- Репозиторий опубликован на GitHub: https://github.com/ra-artnft/NN_FabKit (public).
+- `update.json` в корне репо — manifest для Updater'а. Формат `{ latest_version, rbz_url, release_notes }`. Раздаётся через `https://raw.githubusercontent.com/ra-artnft/NN_FabKit/master/update.json`.
+- GitHub Release `v0.4.1` с прикреплённым `nn_fabkit-0.4.1.rbz` — официальный канал распространения.
+- Плагин v0.4.1: `Updater::DEFAULT_MANIFEST_URL` теперь указывает на raw GitHub URL — `Проверить обновления…` работает без первоначальной ручной настройки. `Сменить URL обновлений…` остаётся для приватных каналов / форков.
+- Команда `CheckUpdate.ensure_manifest_url` упрощена — не спрашивает URL при первом запуске (default уже валиден), пользователь сразу видит результат проверки.
+
 ## [v0.0.10] — 2026-04-24
 
 ### Added
