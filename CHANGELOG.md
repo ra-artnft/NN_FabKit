@@ -2,6 +2,11 @@
 
 Формат — по [Keep a Changelog](https://keepachangelog.com/ru/1.1.0/). Версии монорепо независимы от версии плагина; версия плагина живёт в `plugin-sketchup/src/nn_fabkit/version.rb`.
 
+## [v0.0.6] — 2026-04-24
+
+### Fixed
+- **Сборка `.rbz` под Windows ломала установку в SketchUp.** Rakefile использовал `[System.IO.Compression.ZipFile]::CreateFromDirectory` через PowerShell — под .NET Framework 4.x он пишет нативные `\` в именах файлов архива, что нарушает PKZIP App Note (требует `/`) и SketchUp Extension Manager молча отвергает такой `.rbz` (диалога с ошибкой нет, просто ничего не происходит). Detected на SU 2025 Windows 2026-04-24 при попытке поставить `nn_fabkit-0.3.0.rbz`. Rakefile теперь упаковывает архив через Python `zipfile` (гарантированно `/`); fallback на `zip(1)` для Unix; явный fail с инструкцией если Python отсутствует. На Linux/macOS поведение не меняется.
+
 ## [v0.0.5] — 2026-04-24
 
 ### Added

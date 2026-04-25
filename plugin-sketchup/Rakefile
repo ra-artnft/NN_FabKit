@@ -32,28 +32,46 @@ def windows?
   RUBY_PLATFORM =~ /mswin|mingw|cygwin/i
 end
 
+def find_python
+  candidates = windows? ? %w[python py python3] : %w[python3 python]
+  candidates.each do |cmd|
+    probe = windows? ? `where #{cmd} 2>nul` : `command -v #{cmd} 2>/dev/null`
+    return cmd unless probe.strip.empty?
+  end
+  nil
+end
+
 def zip_contents(src_dir, out_zip)
-  if windows?
-    # Используем System.IO.Compression.ZipFile (не Compress-Archive) —
-    # Compress-Archive хранит разделители путей как "\", что нестандартно
-    # и ломает установку .rbz на macOS. .NET ZipFile пишет "/" по спеке.
-    # CreateFromDirectory записывает СОДЕРЖИМОЕ папки с корня архива
-    # (не саму папку верхним уровнем) при includeBaseDirectory = $false.
-    src = src_dir.tr("/", "\\")
-    dst = out_zip.tr("/", "\\")
-    ps = [
-      "Add-Type -AssemblyName System.IO.Compression.FileSystem",
-      "if (Test-Path -LiteralPath '#{dst}') { Remove-Item -LiteralPath '#{dst}' -Force }",
-      "[System.IO.Compression.ZipFile]::CreateFromDirectory('#{src}', '#{dst}', " \
-        "[System.IO.Compression.CompressionLevel]::Optimal, $false)"
-    ].join("; ")
-    # Массив аргументов в sh → минует cmd.exe → безопасно с кириллицей в путях.
-    sh "powershell", "-NoProfile", "-NonInteractive", "-Command", ps
+  python = find_python
+
+  # Python's zipfile стандартно пишет forward slashes в путях, как требует
+  # спецификация PKZIP App Note и как ожидает SketchUp Extension Manager.
+  # На Windows у нас раньше был [System.IO.Compression.ZipFile]::CreateFromDirectory —
+  # под .NET Framework 4.x он пишет нативные '\' и SketchUp молча отвергает .rbz.
+  # Detected: 2026-04-24 на SU 2025 Windows. Подробности — issue в CHANGELOG.
+  if python
+    script = <<~PY
+      import os, sys, zipfile
+      src = sys.argv[1]
+      out = sys.argv[2]
+      with zipfile.ZipFile(out, 'w', compression=zipfile.ZIP_DEFLATED) as z:
+          for root, _, files in os.walk(src):
+              for f in sorted(files):
+                  full = os.path.join(root, f)
+                  rel = os.path.relpath(full, src).replace(os.sep, '/')
+                  z.write(full, rel)
+    PY
+    sh python, "-c", script, src_dir, out_zip
+  elsif !windows?
+    # Unix fallback: zip(1) пишет '/' по спеке.
+    Dir.chdir(src_dir) { sh "zip", "-r", out_zip, "." }
   else
-    # zip -r . из src_dir → содержимое идёт от корня архива
-    Dir.chdir(src_dir) do
-      sh "zip", "-r", out_zip, "."
-    end
+    raise "Для сборки .rbz на Windows нужен Python (любая версия 3.x).\n" \
+          "Не найдены ни python, ни py, ни python3 в PATH.\n" \
+          "PowerShell System.IO.Compression.ZipFile под .NET Framework 4.x " \
+          "пишет '\\' вместо '/' в путях архива, и SketchUp Extension Manager " \
+          "молча отказывается ставить такой .rbz.\n" \
+          "Поставь Python с https://www.python.org/ или запускай rake build на macOS/Linux."
   end
 end
 
