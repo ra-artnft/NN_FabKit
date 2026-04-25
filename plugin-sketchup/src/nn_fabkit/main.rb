@@ -25,6 +25,8 @@ module NN
     Sketchup.require "nn_fabkit/mcp/server"
     Sketchup.require "nn_fabkit/commands/mcp_control"
 
+    # UI — постоянная панель Inspector (HtmlDialog) и меню.
+    Sketchup.require "nn_fabkit/ui/inspector"
     Sketchup.require "nn_fabkit/ui/menu"
 
     unless file_loaded?(__FILE__)

@@ -1,0 +1,199 @@
+/* NN FabKit Inspector — Sprint A палитра.
+ * Industrial neutral, без брендинга — scope B (логотип/иконки) отдельным sprint.
+ * Тёмная тема через prefers-color-scheme (SU 2024+ имеет dark mode).
+ */
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  padding: 0;
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  font-size: 13px;
+  line-height: 1.45;
+  color: #1a1a1a;
+  background: #ffffff;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+input, button, select, textarea {
+  font-family: inherit;
+  font-size: inherit;
+  -webkit-user-select: text;
+  user-select: text;
+}
+
+/* === Header ============================================================= */
+
+.nn-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  padding: 10px 14px;
+  border-bottom: 1px solid #e0e0e0;
+  background: #f6f7f9;
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+.nn-brand {
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  font-size: 14px;
+}
+
+.nn-version {
+  font-size: 11px;
+  color: #6b6b6b;
+  font-variant-numeric: tabular-nums;
+}
+
+/* === Sections =========================================================== */
+
+.nn-section {
+  padding: 12px 14px;
+  border-bottom: 1px solid #e0e0e0;
+}
+.nn-section:last-child { border-bottom: none; }
+
+.nn-section-title {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #6b6b6b;
+  margin: 0 0 10px 0;
+}
+
+.nn-section-note {
+  margin: 8px 0 0;
+  font-size: 11px;
+  color: #9e9e9e;
+  font-style: italic;
+}
+
+/* === Search input ======================================================= */
+
+.nn-toolbar { margin-bottom: 8px; }
+
+.nn-search {
+  width: 100%;
+  padding: 6px 10px;
+  border: 1px solid #d0d3d6;
+  border-radius: 4px;
+  background: #fff;
+  color: #1a1a1a;
+  outline: none;
+  transition: border-color 0.1s, box-shadow 0.1s;
+}
+.nn-search:focus {
+  border-color: #0066cc;
+  box-shadow: 0 0 0 2px rgba(0, 102, 204, 0.15);
+}
+
+/* === Catalog list ======================================================= */
+
+.nn-catalog-meta {
+  font-size: 11px;
+  color: #6b6b6b;
+  margin-bottom: 6px;
+}
+
+.nn-catalog {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  max-height: 420px;
+  overflow-y: auto;
+  border: 1px solid #e0e0e0;
+  border-radius: 4px;
+  background: #fff;
+}
+
+.nn-catalog-item {
+  display: grid;
+  grid-template-columns: 28px 1fr auto;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 10px;
+  border-bottom: 1px solid #f0f0f0;
+  cursor: pointer;
+  font-variant-numeric: tabular-nums;
+  transition: background 0.05s;
+}
+.nn-catalog-item:last-child { border-bottom: none; }
+.nn-catalog-item:hover { background: #f6f7f9; }
+.nn-catalog-item.is-selected {
+  background: #e6f2ff;
+  border-color: #cfe1f5;
+}
+
+.nn-thumb-cell {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 22px;
+}
+.nn-thumb {
+  border: 1px solid #404040;
+  background: #ffffff;
+  box-sizing: border-box;
+  border-radius: 1px;
+}
+
+.nn-typesize { font-weight: 500; }
+.nn-mass { font-size: 11px; color: #6b6b6b; }
+
+.nn-catalog-empty {
+  padding: 12px 10px;
+  font-size: 11px;
+  color: #9e9e9e;
+  text-align: center;
+}
+
+/* === Selection ========================================================== */
+
+.nn-selection-empty {
+  margin: 0 0 4px 0;
+  color: #6b6b6b;
+}
+.nn-hint {
+  margin: 0;
+  font-size: 11px;
+  color: #9e9e9e;
+}
+
+/* === Dark theme ========================================================= */
+
+@media (prefers-color-scheme: dark) {
+  html, body { background: #1e1e1e; color: #e8e8e8; }
+
+  .nn-header { background: #252526; border-color: #2f2f2f; }
+  .nn-section { border-color: #2f2f2f; }
+  .nn-section-title, .nn-version, .nn-mass,
+  .nn-selection-empty, .nn-catalog-meta { color: #9e9e9e; }
+  .nn-section-note, .nn-hint, .nn-catalog-empty { color: #7a7a7a; }
+
+  .nn-search {
+    background: #2a2a2a;
+    color: #e8e8e8;
+    border-color: #3a3a3a;
+  }
+  .nn-search:focus {
+    border-color: #4a90e2;
+    box-shadow: 0 0 0 2px rgba(74, 144, 226, 0.18);
+  }
+
+  .nn-catalog { background: #252526; border-color: #2f2f2f; }
+  .nn-catalog-item { border-color: #2f2f2f; }
+  .nn-catalog-item:hover { background: #2f2f30; }
+  .nn-catalog-item.is-selected {
+    background: #094771;
+    border-color: #1f5e92;
+  }
+
+  .nn-thumb { border-color: #c0c0c0; background: #1e1e1e; }
+}

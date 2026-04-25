@@ -2,6 +2,18 @@
 
 Формат — по [Keep a Changelog](https://keepachangelog.com/ru/1.1.0/). Версии монорепо независимы от версии плагина; версия плагина живёт в `plugin-sketchup/src/nn_fabkit/version.rb`.
 
+## [v0.0.14] — 2026-04-25
+
+### Added
+- Плагин v0.6.0: **Inspector — постоянная боковая панель плагина** (Sprint A spec-03). `UI::HtmlDialog` с тремя секциями: header (бренд + версия), MetalFab — сортамент трубы (62 типоразмера, поиск по подстроке, лайв-фильтр), Selection (заглушка под Sprint C). Vanilla JS + минимальный CSS, без сборки и без runtime-зависимостей. Тёмная тема через `prefers-color-scheme`. Позиция и размер сохраняются между сессиями (`preferences_key = "NN_FabKit_Inspector"`).
+- Меню `Extensions → NN FabKit → Открыть Inspector` — точка входа.
+- Каталог трубы передаётся в JS через `execute_script` на колбэке `nn_inspector_ready` (JSON инлайнится как JS-литерал, U+2028/U+2029 эскейпятся вручную).
+
+### Implementation notes
+- `nn_fabkit/ui/inspector.rb` (~110 строк) — singleton-контроллер, переиспользует один HtmlDialog. `reset!` нужен для hot-reload в Ruby Console.
+- HTML/CSS/JS живут в `nn_fabkit/ui/html/inspector.{html,css,js}`. Frontend stack — `system-ui` шрифт-стек, без custom fonts; палитра industrial-нейтральная (scope-A spec-03, без брендинга).
+- Sprint B/C добавят: кнопка «Создать», SelectionObserver и редактор параметров. Visual brand (B-scope spec-03) — отдельный sprint при подтверждении заказчиком.
+
 ## [v0.0.13] — 2026-04-24
 
 ### Added

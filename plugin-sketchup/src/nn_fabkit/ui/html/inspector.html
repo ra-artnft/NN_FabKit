@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <title>NN FabKit Inspector</title>
+  <link rel="stylesheet" href="inspector.css">
+</head>
+<body>
+  <header class="nn-header">
+    <div class="nn-brand">NN FabKit</div>
+    <div class="nn-version" id="nn-version">v…</div>
+  </header>
+
+  <section class="nn-section" data-section="metalfab">
+    <h2 class="nn-section-title">MetalFab — сортамент трубы</h2>
+
+    <div class="nn-toolbar">
+      <input type="search" id="nn-search" class="nn-search"
+             placeholder="🔍 Поиск типоразмера, например 40x20"
+             autocomplete="off" spellcheck="false">
+    </div>
+
+    <div class="nn-catalog-meta" id="nn-catalog-meta">Загрузка каталога…</div>
+
+    <ul class="nn-catalog" id="nn-catalog" role="listbox" aria-label="Сортамент труб"></ul>
+
+    <p class="nn-section-note">
+      Sprint A: список read-only. Кнопка «Создать» придёт в Sprint B.
+    </p>
+  </section>
+
+  <section class="nn-section" data-section="selection">
+    <h2 class="nn-section-title">Selection</h2>
+    <div class="nn-selection" id="nn-selection">
+      <p class="nn-selection-empty">Не выделено.</p>
+      <p class="nn-hint">
+        Sprint C подключит SelectionObserver — здесь появятся параметры
+        выделенного компонента NN FabKit.
+      </p>
+    </div>
+  </section>
+
+  <script src="inspector.js"></script>
+</body>
+</html>
