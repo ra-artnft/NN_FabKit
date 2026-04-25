@@ -81,10 +81,7 @@ module NN
 
         def self.build_profile(entities, width_mm, height_mm, wall_mm, outer_radius_mm)
           outer_pts = rounded_rect_points(width_mm, height_mm, outer_radius_mm, SEGMENTS_PER_CORNER)
-          face = entities.add_face(outer_pts)
-
-          # Нормаль наверх (+Z), чтобы Follow Me экструдировал в +Z.
-          face.reverse! if face.normal.z < 0
+          outer_face = entities.add_face(outer_pts)
 
           if wall_mm.to_f > 0 && wall_mm * 2 < width_mm && wall_mm * 2 < height_mm
             inner_w = width_mm - 2 * wall_mm
@@ -92,16 +89,30 @@ module NN
             inner_r = [outer_radius_mm - wall_mm, 0.0].max
             inner_pts = rounded_rect_points(inner_w, inner_h, inner_r, SEGMENTS_PER_CORNER)
 
-            # add_loop требует Array<Edge>, не точек. Строим замкнутую цепь рёбер
-            # (включая закрывающее ребро pts.last → pts.first) и добавляем её как
-            # внутренний loop существующего face — сечение становится полым.
-            inner_edges = inner_pts.each_with_index.map do |p, i|
-              entities.add_line(p, inner_pts[(i + 1) % inner_pts.size])
-            end
-            face.add_loop(inner_edges)
+            # SketchUp-идиома: add_face поверх существующего outer_face в той же
+            # плоскости автоматически образует inner loop в outer (отверстие).
+            # erase! у inner_face оставляет outer с дыркой — сечение становится полым.
+            # ВАЖНО: НЕ строить inner edges по одному через add_line — каждая линия
+            # в плоскости face расщепляет face, и outer превращается в Deleted Entity.
+            inner_face = entities.add_face(inner_pts)
+            inner_face.erase! if inner_face && inner_face.valid?
           end
 
-          face
+          # outer_face после операции может быть переcreated/replaced SketchUp'ом
+          # при разрезании — перепривязываемся через find_entity_by_persistent_id
+          # не нужно: SketchUp возвращает live-handle. Но проверим валидность.
+          # Нормаль наверх (+Z), чтобы Follow Me экструдировал в +Z.
+          if outer_face && outer_face.valid?
+            outer_face.reverse! if outer_face.normal.z < 0
+            outer_face
+          else
+            # Fallback: ищем самую большую face в entities — это наша outer.
+            faces = entities.grep(Sketchup::Face)
+            raise "Outer face не создалась" if faces.empty?
+            biggest = faces.max_by(&:area)
+            biggest.reverse! if biggest.normal.z < 0
+            biggest
+          end
         end
 
         # 4 угла × (SEGMENTS_PER_CORNER + 1) точек, дубликаты на стыках убираются.

@@ -2,6 +2,11 @@
 
 Формат — по [Keep a Changelog](https://keepachangelog.com/ru/1.1.0/). Версии монорепо независимы от версии плагина; версия плагина живёт в `plugin-sketchup/src/nn_fabkit/version.rb`.
 
+## [v0.0.7] — 2026-04-24
+
+### Fixed
+- Плагин v0.3.1: **`NoMethodError: undefined method 'add_loop' for #<Deleted Entity>`** при создании профильной трубы. Inner loop стенки строился через `entities.add_line` по сегментам, но каждая такая линия в плоскости уже существующей outer face расщепляет её — outer становится Deleted Entity к моменту вызова `add_loop`. Возврат к стандартной SketchUp-идиоме: `add_face(inner_pts) → erase!` поверх outer автоматически образует inner loop (отверстие). Плюс fallback по `entities.grep(Sketchup::Face).max_by(&:area)` если outer всё-таки не выживает.
+
 ## [v0.0.6] — 2026-04-24
 
 ### Fixed
