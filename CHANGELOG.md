@@ -2,6 +2,17 @@
 
 Формат — по [Keep a Changelog](https://keepachangelog.com/ru/1.1.0/). Версии монорепо независимы от версии плагина; версия плагина живёт в `plugin-sketchup/src/nn_fabkit/version.rb`.
 
+## [v0.0.10] — 2026-04-24
+
+### Added
+- Плагин v0.4.0: **IGES wireframe-экспорт одной трубы** (`Extensions → NN FabKit → MetalFab → Экспорт «Профильная труба» в IGES…`). Минимальное подмножество IGES 5.3 — Type 110 (Line) + Type 100 (Circular Arc), ASCII fixed 80-col format со всеми пятью секциями (S/G/D/P/T). Выгружает endcap-контуры на z=0 и z=length (outer + inner) плюс 4 силуэтных вертикальных линии с каждого контура. Файл читается любым IGES viewer'ом — даёт визуальный контроль геометрии. Это первый шаг к полному собственному IGES-конвертёру (ADR-017); полный surface-model BREP (Type 120/122/144) — отдельный sprint в `app-desktop/`.
+- Плагин v0.4.0: **удалённое обновление плагина** (`NN FabKit → Проверить обновления…` + `Сменить URL обновлений…`). Manifest формат — JSON `{ latest_version, rbz_url, release_notes }` по любому URL (заказчик выбирает хостинг). URL хранится в `Sketchup.read_default("NN_FabKit", "update_manifest_url")` между сессиями. Первый запуск спрашивает URL; дальше — точечная проверка по запросу. Скачка через `Net::HTTP` (https + редиректы), установка через `Sketchup.install_from_archive`. Рестарт SU всё ещё нужен после установки (поведение Extension Manager, см. `feedback_sketchup_install_restart.md`).
+- В `nn_metalfab` теперь записывается `length_mm` — нужно IGES-экспортёру (раньше падал в bounds.depth с конверсией единиц, что плохо после Make Unique / cut).
+
+### Implementation notes
+- Структура `metalfab/iges_exporter/wireframe.rb` (~280 строк) — полный IGES writer без зависимостей: hollerith strings, fixed 80-col padding, sequence numbering, P→D pointer back, G section с 25 параметрами. Открыто к расширению (Type 120 surface of revolution для углов трубы — следующий шаг к surface model).
+- `nn_fabkit/updater.rb` — Net::HTTP (stdlib) + JSON.parse. Manifest URL заглушка `https://example.invalid/...`, заказчик задаёт свой при первом запуске (любой статический хостинг — GitHub Releases, S3, собственный сервер).
+
 ## [v0.0.9] — 2026-04-24
 
 ### Changed

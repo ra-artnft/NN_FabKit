@@ -62,6 +62,10 @@ NN_FabKit/
 | MetalFab — установка `dynamic_attributes` для DC-UX | [plugin-sketchup/src/nn_fabkit/metalfab/dc_attrs.rb](plugin-sketchup/src/nn_fabkit/metalfab/dc_attrs.rb) |
 | MetalFab — загрузчик JSON-каталогов сортамента | [plugin-sketchup/src/nn_fabkit/metalfab/catalog.rb](plugin-sketchup/src/nn_fabkit/metalfab/catalog.rb) |
 | MetalFab — каталог трубы (копия в плагине) | [plugin-sketchup/src/nn_fabkit/metalfab/catalogs/gost-30245-rect-tube.json](plugin-sketchup/src/nn_fabkit/metalfab/catalogs/gost-30245-rect-tube.json) |
+| MetalFab — IGES wireframe-экспорт (Type 110 + 100) | [plugin-sketchup/src/nn_fabkit/metalfab/iges_exporter/wireframe.rb](plugin-sketchup/src/nn_fabkit/metalfab/iges_exporter/wireframe.rb) |
+| MetalFab — UI-команда экспорта в IGES | [plugin-sketchup/src/nn_fabkit/metalfab/commands/export_iges.rb](plugin-sketchup/src/nn_fabkit/metalfab/commands/export_iges.rb) |
+| Удалённое обновление плагина (manifest URL → .rbz) | [plugin-sketchup/src/nn_fabkit/updater.rb](plugin-sketchup/src/nn_fabkit/updater.rb) |
+| UI-команды updater'а (Проверить / Сменить URL) | [plugin-sketchup/src/nn_fabkit/commands/check_update.rb](plugin-sketchup/src/nn_fabkit/commands/check_update.rb) |
 | Сортамент: профильная труба | [docs/knowledge-base/gost-30245-rect-tube.json](docs/knowledge-base/gost-30245-rect-tube.json) |
 | Сортамент: лист г/к | [docs/knowledge-base/gost-19903-hot-sheet.json](docs/knowledge-base/gost-19903-hot-sheet.json) |
 | Сортамент: марки стали | [docs/knowledge-base/steel-grades.json](docs/knowledge-base/steel-grades.json) |

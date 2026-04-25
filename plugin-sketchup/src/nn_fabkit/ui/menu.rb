@@ -12,10 +12,15 @@ module NN
 
           # Submenu MetalFab — металл-ветка
           metalfab = parent.add_submenu("MetalFab")
-          metalfab.add_item("Создать «Профильная труба»…") { create_rect_tube }
+          metalfab.add_item("Создать «Профильная труба»…")          { create_rect_tube }
+          metalfab.add_separator
+          metalfab.add_item("Экспорт «Профильная труба» в IGES…")   { export_iges }
 
           parent.add_separator
-          parent.add_item("О плагине…")      { show_about }
+          parent.add_item("Проверить обновления…")                  { check_update }
+          parent.add_item("Сменить URL обновлений…")                { change_update_url }
+          parent.add_separator
+          parent.add_item("О плагине…")                             { show_about }
         end
 
         def self.dump_to_json
@@ -38,6 +43,18 @@ module NN
 
         def self.create_rect_tube
           NN::MetalFab::Commands::CreateRectTube.call
+        end
+
+        def self.export_iges
+          NN::MetalFab::Commands::ExportIges.call
+        end
+
+        def self.check_update
+          NN::FabKit::Commands::CheckUpdate.call
+        end
+
+        def self.change_update_url
+          NN::FabKit::Commands::CheckUpdate.change_url
         end
 
         def self.show_about

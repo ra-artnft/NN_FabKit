@@ -10,7 +10,7 @@ module NN
       module_function
 
       def write_rect_tube(definition, typesize:, gost:, width_mm:, height_mm:, wall_mm:,
-                          outer_radius_mm:, mass_per_m_kg:, steel_grade: nil)
+                          outer_radius_mm:, length_mm:, mass_per_m_kg: nil, steel_grade: nil)
         write(definition, "profile_type",     "rect_tube")
         write(definition, "gost",             gost)
         write(definition, "typesize",         typesize)
@@ -18,6 +18,7 @@ module NN
         write(definition, "height_mm",        height_mm.to_f)
         write(definition, "wall_mm",          wall_mm.to_f)
         write(definition, "outer_radius_mm",  outer_radius_mm.to_f)
+        write(definition, "length_mm",        length_mm.to_f)
         write(definition, "mass_per_m_kg",    mass_per_m_kg.to_f) if mass_per_m_kg
         write(definition, "steel_grade",      steel_grade) if steel_grade
         write(definition, "length_axis",      "z")

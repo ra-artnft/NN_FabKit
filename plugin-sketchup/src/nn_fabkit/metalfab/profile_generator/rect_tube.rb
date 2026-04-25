@@ -51,6 +51,7 @@ module NN
             height_mm:       height_mm,
             wall_mm:         wall_mm,
             outer_radius_mm: outer_radius_mm,
+            length_mm:       length_mm,
             mass_per_m_kg:   mass_per_m_kg,
             steel_grade:     steel_grade
           )
