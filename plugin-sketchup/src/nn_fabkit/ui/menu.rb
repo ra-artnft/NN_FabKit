@@ -13,6 +13,8 @@ module NN
           # Submenu MetalFab — металл-ветка
           metalfab = parent.add_submenu("MetalFab")
           metalfab.add_item("Создать «Профильная труба»…") { create_rect_tube }
+          metalfab.add_separator
+          metalfab.add_item("Демо: рамка перегородки 420×2210") { build_partition_frame }
 
           parent.add_separator
           parent.add_item("О плагине…")      { show_about }
@@ -38,6 +40,10 @@ module NN
 
         def self.create_rect_tube
           NN::MetalFab::Commands::CreateRectTube.call
+        end
+
+        def self.build_partition_frame
+          NN::MetalFab::Commands::BuildPartitionFrame.call
         end
 
         def self.show_about

@@ -11,6 +11,7 @@ module NN
     Sketchup.require "nn_fabkit/metalfab/catalog"
     Sketchup.require "nn_fabkit/metalfab/profile_generator/rect_tube"
     Sketchup.require "nn_fabkit/metalfab/commands/create_rect_tube"
+    Sketchup.require "nn_fabkit/metalfab/commands/build_partition_frame"
 
     Sketchup.require "nn_fabkit/ui/menu"
 
