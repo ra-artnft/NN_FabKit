@@ -1,5 +1,5 @@
 {
-  "latest_version": "0.5.0",
-  "rbz_url": "https://github.com/ra-artnft/NN_FabKit/releases/download/v0.5.0/nn_fabkit-0.5.0.rbz",
-  "release_notes": "v0.5.0 — MCP-мост Claude ⇄ SketchUp.\n\nПлагин получил TCP сервер (127.0.0.1:9876, JSON-RPC) и Python-пакет nn-fabkit-mcp. После регистрации `claude mcp add nn-fabkit -- python -m nn_fabkit_mcp` Claude может напрямую выполнять Ruby в SketchUp, читать состояние модели и запускать SkpDump через MCP-вызовы. Подробности и install-workflow — в mcp-bridge/README.md."
+  "latest_version": "0.6.0",
+  "rbz_url": "https://github.com/ra-artnft/NN_FabKit/releases/download/v0.6.0/nn_fabkit-0.6.0.rbz",
+  "release_notes": "v0.6.0 — Inspector (Sprint A spec-03).\n\nПостоянная боковая панель плагина (UI::HtmlDialog) с тремя секциями: header (бренд + версия), MetalFab — сортамент трубы (62 типоразмера ГОСТ 30245-2003, лайв-поиск, мини-превью сечения), Selection (заглушка под Sprint C). Vanilla JS + минимальный CSS, без сборки. Тёмная тема через prefers-color-scheme. Позиция/размер сохраняются между сессиями.\n\nТочка входа: Extensions → NN FabKit → Открыть Inspector. После установки нужен рестарт SketchUp (поведение Extension Manager)."
 }
