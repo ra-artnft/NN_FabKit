@@ -2,6 +2,18 @@
 
 Формат — по [Keep a Changelog](https://keepachangelog.com/ru/1.1.0/). Версии монорепо независимы от версии плагина; версия плагина живёт в `plugin-sketchup/src/nn_fabkit/version.rb`.
 
+## [v0.0.5] — 2026-04-24
+
+### Added
+- Плагин v0.3.0: первый параметрический генератор металл-ветки `NN::MetalFab::ProfileGenerator::RectTube` — LOD-1 геометрия профильной трубы (rounded rect сечение со скруглёнными углами и реальной стенкой, Follow Me экструзия по +Z, бюджет ≤60 faces / ≤100 edges, 8 сегментов на радиус).
+- Команда меню `Extensions → NN FabKit → MetalFab → Создать «Профильная труба»…` — выбор типоразмера / марки стали / длины из каталога ГОСТ 30245-2003, создаёт definition с метаданными `nn_metalfab` (ADR-005) и DC-атрибутами для Component Options.
+- Структура `plugin-sketchup/src/nn_fabkit/metalfab/` под ветку `NN::MetalFab` — модули `catalog`, `attr_dict`, `dc_attrs`, `profile_generator/rect_tube`, `commands/create_rect_tube`. Каталог `catalogs/gost-30245-rect-tube.json` — копия канонического `docs/knowledge-base/gost-30245-rect-tube.json`, доставляется в `.rbz`.
+- Радиус гиба считается по формуле R = 1.5 × t для t ≤ 6 мм и R = 2 × t для t > 6 мм (06-sortament-ontology, ADR-014). Каталог переопределяет формулу фактическими значениями ГОСТ.
+
+### Implementation notes
+- DC-атрибуты на этой итерации помечены `_access = "VIEW"` (readonly) — встроенный DC-движок умеет менять только scale, не топологию (ADR-002). Регенерация при изменении параметров — следующий sprint (DC-EntityObserver, блок 5.5 spec-01).
+- Имена материалов — наша конвенция `«Труба <typesize> <grade>»` (ADR-016, **без** OCL-словаря `lairdubois_opencutlist_*`).
+
 ## [v0.0.4] — 2026-04-23
 
 ### Added

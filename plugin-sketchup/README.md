@@ -34,12 +34,15 @@ rake install
 ## Текущая функциональность
 
 - `Extensions → NN FabKit → Dump в JSON…` — выгружает текущую модель в JSON-файл рядом с `.skp` (или на Рабочий стол, если модель не сохранена). Используется для пополнения корпуса примеров (см. [ADR-015](../docs/knowledge-base/09-architecture-decisions.md)). Реализация — `src/nn_fabkit/skp_dump.rb`, синхронизированная копия канонического `docs/knowledge-base/tools/skp_dump.rb`.
+- `Extensions → NN FabKit → MetalFab → Создать «Профильная труба»…` — параметрический генератор LOD-1 (рамочное сечение со скруглёнными углами и реальной стенкой) по сортаменту ГОСТ 30245-2003. Запрашивает типоразмер, марку стали и длину; создаёт definition с правильной BREP-геометрией + DC-атрибутами для Component Options + метаданными `nn_metalfab` для будущего IGES-конвертёра. Реализация — `src/nn_fabkit/metalfab/`. См. [docs/specs/spec-01-dc-rework-for-iges.md](../docs/specs/spec-01-dc-rework-for-iges.md).
 - `Extensions → NN FabKit → О плагине…` — messagebox с версией плагина и SketchUp.
 
 ## Следующие шаги
 
-- Параметрический генератор профилей ([ADR-002](../docs/knowledge-base/09-architecture-decisions.md)) — namespace `NN::MetalFab`.
-- Attribute dictionary `nn_metalfab` для металл-компонентов ([ADR-005](../docs/knowledge-base/09-architecture-decisions.md)).
+- DC-EntityObserver: при изменении параметров в Component Options — автоматическая регенерация definition (часть spec-01, блок 5.5).
+- Команда «Перегенерировать выделенное» для ручной отладки.
+- Команда миграции legacy DC заказчика (block 5.6 spec-01).
+- Параметрический генератор листа (block 5.3).
 - Форк `mhyrr/sketchup-mcp` как база TCP-моста ([ADR-001](../docs/knowledge-base/09-architecture-decisions.md)).
 
 ## Сборка
@@ -61,11 +64,21 @@ plugin-sketchup/
 └── src/                            # ← содержимое идёт в .rbz
     ├── nn_fabkit.rb                # loader: register_extension, проверка версии
     └── nn_fabkit/
-        ├── main.rb                 # точка входа после активации: регистрация меню
+        ├── main.rb                 # точка входа после активации: загрузка модулей + регистрация меню
         ├── version.rb              # NN::FabKit::VERSION
         ├── skp_dump.rb             # NN::FabKit::SkpDump — выгрузка модели в JSON
-        └── ui/
-            └── menu.rb             # NN::FabKit::UI::Menu.register!
+        ├── ui/
+        │   └── menu.rb             # NN::FabKit::UI::Menu.register!
+        └── metalfab/               # ветка металлоконструкций (NN::MetalFab)
+            ├── catalog.rb          # загрузка JSON-каталогов сортамента
+            ├── attr_dict.rb        # writer для `nn_metalfab` (ADR-005)
+            ├── dc_attrs.rb         # установка `dynamic_attributes` для Component Options
+            ├── catalogs/
+            │   └── gost-30245-rect-tube.json   # копия каталога (синхронизируется с docs/knowledge-base)
+            ├── commands/
+            │   └── create_rect_tube.rb         # UI-команда создания DC «Профильная труба»
+            └── profile_generator/
+                └── rect_tube.rb    # генератор LOD-1 геометрии (rounded rect + Follow Me)
 ```
 
 ## Правила кода

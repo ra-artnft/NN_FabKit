@@ -6,7 +6,14 @@ module NN
       module Menu
         def self.register!
           parent = ::UI.menu("Extensions").add_submenu("NN FabKit")
+
+          # Общие команды зонтика
           parent.add_item("Dump в JSON…")    { dump_to_json }
+
+          # Submenu MetalFab — металл-ветка
+          metalfab = parent.add_submenu("MetalFab")
+          metalfab.add_item("Создать «Профильная труба»…") { create_rect_tube }
+
           parent.add_separator
           parent.add_item("О плагине…")      { show_about }
         end
@@ -27,6 +34,10 @@ module NN
               "Подробности — в Window → Ruby Console (префикс [SkpDump])."
             )
           end
+        end
+
+        def self.create_rect_tube
+          NN::MetalFab::Commands::CreateRectTube.call
         end
 
         def self.show_about

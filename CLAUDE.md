@@ -51,11 +51,17 @@ NN_FabKit/
 |---|---|
 | Меню плагина (пункты, обработчики) | [plugin-sketchup/src/nn_fabkit/ui/menu.rb](plugin-sketchup/src/nn_fabkit/ui/menu.rb) |
 | Регистрация плагина / проверка версии SU | [plugin-sketchup/src/nn_fabkit.rb](plugin-sketchup/src/nn_fabkit.rb) |
-| Точка входа после активации | [plugin-sketchup/src/nn_fabkit/main.rb](plugin-sketchup/src/nn_fabkit/main.rb) |
+| Точка входа после активации (загрузка модулей) | [plugin-sketchup/src/nn_fabkit/main.rb](plugin-sketchup/src/nn_fabkit/main.rb) |
 | Версия плагина | [plugin-sketchup/src/nn_fabkit/version.rb](plugin-sketchup/src/nn_fabkit/version.rb) |
 | Сборка `.rbz` | [plugin-sketchup/Rakefile](plugin-sketchup/Rakefile) |
 | Дампер модели → JSON (внутри плагина) | [plugin-sketchup/src/nn_fabkit/skp_dump.rb](plugin-sketchup/src/nn_fabkit/skp_dump.rb) |
 | Дампер модели → JSON (канонический исходник) | [docs/knowledge-base/tools/skp_dump.rb](docs/knowledge-base/tools/skp_dump.rb) |
+| **MetalFab — generator профильной трубы (LOD-1)** | [plugin-sketchup/src/nn_fabkit/metalfab/profile_generator/rect_tube.rb](plugin-sketchup/src/nn_fabkit/metalfab/profile_generator/rect_tube.rb) |
+| MetalFab — UI-команда создания DC «Профильная труба» | [plugin-sketchup/src/nn_fabkit/metalfab/commands/create_rect_tube.rb](plugin-sketchup/src/nn_fabkit/metalfab/commands/create_rect_tube.rb) |
+| MetalFab — writer метаданных `nn_metalfab` (ADR-005) | [plugin-sketchup/src/nn_fabkit/metalfab/attr_dict.rb](plugin-sketchup/src/nn_fabkit/metalfab/attr_dict.rb) |
+| MetalFab — установка `dynamic_attributes` для DC-UX | [plugin-sketchup/src/nn_fabkit/metalfab/dc_attrs.rb](plugin-sketchup/src/nn_fabkit/metalfab/dc_attrs.rb) |
+| MetalFab — загрузчик JSON-каталогов сортамента | [plugin-sketchup/src/nn_fabkit/metalfab/catalog.rb](plugin-sketchup/src/nn_fabkit/metalfab/catalog.rb) |
+| MetalFab — каталог трубы (копия в плагине) | [plugin-sketchup/src/nn_fabkit/metalfab/catalogs/gost-30245-rect-tube.json](plugin-sketchup/src/nn_fabkit/metalfab/catalogs/gost-30245-rect-tube.json) |
 | Сортамент: профильная труба | [docs/knowledge-base/gost-30245-rect-tube.json](docs/knowledge-base/gost-30245-rect-tube.json) |
 | Сортамент: лист г/к | [docs/knowledge-base/gost-19903-hot-sheet.json](docs/knowledge-base/gost-19903-hot-sheet.json) |
 | Сортамент: марки стали | [docs/knowledge-base/steel-grades.json](docs/knowledge-base/steel-grades.json) |
