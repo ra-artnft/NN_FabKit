@@ -1,10 +1,10 @@
-NN FabKit rect-tube box LOD-1 (BREP, no radius): L=600.0 (X) x W=40.0 (YS      1
-) x H=20.0 (Z), wall=2.0 mm. 6 Type 144 trimmed surfaces.               S      2
+NN FabKit rect-tube LOD-1 (BREP): L=600.0 (X) x W=40.0 (Y) x H=20.0 (Z),S      1
+ wall=2.0 mm, R=0.0 mm. 6 plane faces (no radius).                      S      2
 1H,,1H;,9HNN FabKit,                                                    G      1
-43Hrect-tube-box_40x20x2_L600__v0.2.0-brep.igs,                         G      2
-19HNN FabKit nc-export,25HNN FabKit nc-export 0.2.0,32,38,6,308,        G      3
-15,0H,1.0,2,2HMM,32,1.0,15H20260426.115720,0.001,13000.0,0H,0H,         G      4
-11,0,15H20260426.115720;                                                G      5
+43Hrect-tube_40x20x2_L600__v0.3.0-noradius.igs,                         G      2
+19HNN FabKit nc-export,25HNN FabKit nc-export 0.3.0,32,38,6,308,        G      3
+15,0H,1.0,2,2HMM,32,1.0,15H20260426.121509,0.001,13000.0,0H,0H,         G      4
+11,0,15H20260426.121509;                                                G      5
      110       1       0       0       0       0       0       000000000D      1
      110       0       0       1       0                E1_F_YPL       0D      2
      110       2       0       0       0       0       0       000000000D      3

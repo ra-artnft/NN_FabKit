@@ -163,6 +163,115 @@ class NurbsSurface(Entity):
 
 
 @dataclass
+class SurfaceOfRevolution(Entity):
+    """Type 120 — Surface of Revolution.
+
+    Поверхность, образованная вращением кривой (generatrix) вокруг оси (axis line).
+    Для трубы со скруглёнными углами: каждый угол профиля — это четверть-цилиндр,
+    образованный вращением прямой generatrix (параллельной оси трубы) вокруг
+    axis line (тоже параллельной оси трубы) на угол π/2.
+
+    P-record: 120, AXIS_DE, GENERATRIX_DE, START_ANGLE, END_ANGLE;
+      AXIS_DE     — DE на Type 110 Line (ось вращения)
+      GENERATRIX_DE — DE на curve entity (Type 110/100/126)
+      START_ANGLE — radians
+      END_ANGLE   — radians, должен быть > START_ANGLE
+    """
+
+    axis: Entity | None = None
+    generatrix: Entity | None = None
+    start_angle: float = 0.0
+    end_angle: float = 6.283185307179586  # 2π
+
+    def __post_init__(self) -> None:
+        self.type_number = 120
+        if self.axis is None or self.generatrix is None:
+            raise ValueError("SurfaceOfRevolution requires axis and generatrix")
+
+    def parameters(self, resolver: Resolver) -> list[str]:
+        return [
+            str(resolver(self.axis)),
+            str(resolver(self.generatrix)),
+            fnum(self.start_angle),
+            fnum(self.end_angle),
+        ]
+
+    def referenced_entities(self) -> list[Entity]:
+        return [self.axis, self.generatrix]
+
+
+@dataclass
+class NurbsCurve(Entity):
+    """Type 126 — Rational B-Spline Curve.
+
+    Используется для arc'ов в произвольной плоскости (когда Type 100 не подходит
+    из-за ограничения «arc lies in plane parallel to XT-YT»). Для NURBS-arc
+    degree 2 с 3 control points и весами [1, cos(θ/2), 1].
+
+    P-record (для нашего minimal case — planar non-rational):
+      126, K, M, PROP1, PROP2, PROP3, PROP4,
+           knots(K+M+2 values),
+           weights(K+1 values),
+           ctrl_points 3D (3*(K+1) values),
+           V0, V1,
+           normal_x, normal_y, normal_z;
+
+    PROP1 = 0 if planar curve (norm vector задан); 1 if non-planar
+    PROP2 = 1 if closed curve, 0 if open
+    PROP3 = 1 if polynomial (all weights == 1), 0 if rational
+    PROP4 = 1 if periodic, 0 if non-periodic
+    """
+
+    K: int = 2  # upper index = ctrl_points_count - 1
+    M: int = 2  # degree
+    knots: list[float] = field(default_factory=list)
+    weights: list[float] = field(default_factory=list)
+    control_points: list[tuple[float, float, float]] = field(default_factory=list)
+    v_start: float = 0.0
+    v_end: float = 1.0
+    normal: tuple[float, float, float] = (0.0, 0.0, 1.0)
+    is_polynomial: bool = False
+    is_planar: bool = True
+    is_closed: bool = False
+    is_periodic: bool = False
+
+    def __post_init__(self) -> None:
+        self.type_number = 126
+        expected_knots = self.K + self.M + 2
+        if len(self.knots) != expected_knots:
+            raise ValueError(
+                f"NurbsCurve: knots count {len(self.knots)} != K+M+2={expected_knots}"
+            )
+        if len(self.weights) != self.K + 1:
+            raise ValueError(
+                f"NurbsCurve: weights count {len(self.weights)} != K+1={self.K + 1}"
+            )
+        if len(self.control_points) != self.K + 1:
+            raise ValueError(
+                f"NurbsCurve: ctrl points count {len(self.control_points)} "
+                f"!= K+1={self.K + 1}"
+            )
+
+    def parameters(self, resolver: Resolver) -> list[str]:
+        params: list[str] = [
+            str(self.K),
+            str(self.M),
+            "0" if self.is_planar else "1",     # PROP1
+            "1" if self.is_closed else "0",      # PROP2
+            "1" if self.is_polynomial else "0",  # PROP3
+            "1" if self.is_periodic else "0",    # PROP4
+        ]
+        params.extend(fnum(k) for k in self.knots)
+        params.extend(fnum(w) for w in self.weights)
+        for cp in self.control_points:
+            params.extend([fnum(cp[0]), fnum(cp[1]), fnum(cp[2])])
+        params.append(fnum(self.v_start))
+        params.append(fnum(self.v_end))
+        params.extend([fnum(self.normal[0]), fnum(self.normal[1]), fnum(self.normal[2])])
+        return params
+
+
+@dataclass
 class CompositeCurve(Entity):
     """Type 102 — Composite Curve.
 

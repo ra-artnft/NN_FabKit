@@ -53,7 +53,11 @@ def _build_parser() -> argparse.ArgumentParser:
     p_tube.add_argument(
         "--no-radius",
         action="store_true",
-        help="LOD-1 без скруглений (плоские углы 90°). Сейчас единственный поддерживаемый режим.",
+        help="плоские углы 90° (без скруглений). По умолчанию — со скруглениями (ГОСТ 30245-2003).",
+    )
+    p_tube.add_argument(
+        "--radius", type=float, default=None,
+        help="радиус наружного скругления, мм. Если не задан — авто по ГОСТ 30245-2003 (R=2.0t / 2.5t / 3.0t).",
     )
     p_tube.add_argument(
         "-o", "--output", type=Path, required=True, help="путь сохранения .igs"
@@ -78,16 +82,16 @@ def main(argv: list[str] | None = None) -> int:
         return 0
 
     if args.command == "rect-tube":
-        if not args.no_radius:
-            parser.error(
-                "rect-tube: на v0.1.0 поддерживается только --no-radius "
-                "(LOD-1 без скруглений). Скругления — следующий шаг."
-            )
+        if args.no_radius:
+            radius = 0.0
+        else:
+            radius = args.radius  # None → авто по ГОСТ
         doc = rect_tube_box(
             width_mm=args.width,
             height_mm=args.height,
             wall_mm=args.wall,
             length_mm=args.length,
+            radius_mm=radius,
         )
         doc.file_name = args.output.name
         doc.write(args.output)

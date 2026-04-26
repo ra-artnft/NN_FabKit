@@ -2,6 +2,31 @@
 
 Формат — по [Keep a Changelog](https://keepachangelog.com/ru/1.1.0/). Версии монорепо независимы от версии плагина; версия плагина живёт в `plugin-sketchup/src/nn_fabkit/version.rb`.
 
+## [v0.0.17] — 2026-04-26
+
+### Added
+- **`app-desktop/nc-export` 0.2.0 → 0.3.0** — LOD-1 со скруглёнными углами профиля. Главный milestone: **CypTube делает feature recognition нашего IGES** — для трубы 60×10×1.5 R=2.25 L=992 показывает в title `Rect 10 × 60 R2.25 X 992`, идентично reference-файлу заказчика.
+- Новые entity-классы в `iges/entities.py`: `SurfaceOfRevolution` (Type 120) и `NurbsCurve` (Type 126).
+- Helpers в `tube/rect_tube.py`:
+  - `_nurbs_arc_90` — 90° arc как Type 126 NURBS degree 2 (3 ctrl points с весами [1, √2/2, 1]) — работает в произвольной плоскости (не только параллельной XT-YT как Type 100).
+  - `_build_trimmed_cylinder_corner` — четверть-цилиндр на углу профиля (10 entities: axis line + generatrix + 2 axial edges + 2 NURBS arcs + composite + Type 120 + COS + Type 144).
+  - `_build_rounded_endcap` — endcap с rounded-rectangle boundary (12 entities: 4 lines + 4 NURBS arcs + composite + Type 128 plane + COS + Type 144).
+- CLI: `--radius R` (явный радиус) или auto по ГОСТ 30245-2003. `--no-radius` оставлен для legacy mode.
+- 38 тестов (было 35) — добавлены тесты для default rounded mode (96 entities, 10 Type 144, 4 Type 120, 16 Type 126), explicit radius, no-radius back-compat.
+
+### Verified in CypTube
+- `examples/rect-tube_60x10x1.5_L992_R2.25__v0.3.0-mimic-ref.igs` (96 entities, 26 КБ) — полностью повторяет reference structure SolidWorks. Title в CypTube: `Rect 10 × 60 R2.25 X 992` ✓ (точно как в reference от заказчика).
+- `examples/rect-tube_40x20x2_L600__v0.3.0-rounded.igs` (96 entities) — стандартная труба с auto-radius по ГОСТ (R=4.0).
+- `examples/rect-tube_40x20x2_L600__v0.3.0-noradius.igs` (48 entities) — back-compat с v0.2.0.
+
+### Implementation notes
+- **Распознавание профиля как `Rect WxH RR`** требует BREP с правильно ориентированными boundary loops (CCW от outer normal) и Type 144 trim над Type 128 (плоские грани) и Type 120 (цилиндры).
+- **Type 100 (Circular Arc) не подошёл** для arcs трубных скруглений — стандарт требует «arc lies in plane parallel to XT-YT», а наши arcs в плоскостях параллельных YZ. Решение — Type 126 NURBS degree 2 (универсальная замена для arcs в произвольной ориентации, что и делает SolidWorks).
+- **Размеры в title CypTube** — это **внутренний просвет** трубы (для reference 60×10 → показывает 10×60). У нашего LOD-1 (без полости) CypTube тоже показывает 10×60, потому что вычисляет от boundary trimmed surface, не зная о стенке. Корректность размеров inner cavity подтвердится после LOD-2.
+
+### Known limitations
+- **Полая структура (LOD-2) не реализована** — труба моделируется как сплошное тело со скруглениями. Reference SolidWorks — полая (есть outer surface + inner surface + annular endcap). Следующий шаг: 4 inner plane + 4 inner cylinder + endcaps с inner_boundaries в Type 144.
+
 ## [v0.0.16] — 2026-04-26
 
 ### Added
