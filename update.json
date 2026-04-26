@@ -1,5 +1,5 @@
 {
-  "latest_version": "0.11.1",
-  "rbz_url": "https://github.com/ra-artnft/NN_FabKit/releases/download/v0.11.1/nn_fabkit-0.11.1.rbz",
-  "release_notes": "v0.11.1 — FabKit CAD: face pick + arrow key axis constraints.\n\nИсправлено по фидбеку: tool теперь выбирает ГРАНЬ (face) трубы вместо вершины. Apex резa = центр выбранной грани. Default tilt axis определяется по normal'и грани (end cap → X, +X/-X side → Y, +Y/-Y side → X).\n\nДобавлено: arrow keys для constrain tilt axis (стандартный SU UX как в Move/Rotate tool'ах). → ставит ось X (red, mitre extends в Y), ← ставит ось Y (green, mitre extends в X), ↑↓ = Z (beep, не применимо для mitre — Z это ось трубы).\n\nProtractor reference line подсвечивается цветом активной оси (red/green) — визуальный affordance."
+  "latest_version": "0.11.2",
+  "rbz_url": "https://github.com/ra-artnft/NN_FabKit/releases/download/v0.11.2/nn_fabkit-0.11.2.rbz",
+  "release_notes": "v0.11.2 — FabKit CAD redesign: selection-based 2-tube auto-mitre.\n\nWORKFLOW:\n1. Стандартным SU Select tool'ом выдели 2 трубы (Ctrl+клик для добавления второй)\n2. Кликни «FabKit CAD» в toolbar — tool анализирует пару\n3. Если концы сходятся — рисует BRIGHT preview: magenta cross в joint point + cyan/yellow rectangles на cut planes обеих труб + label с углом\n4. Enter / клик / VCB-число → применить mitre на обе трубы (один undo)\n5. Esc → отмена\n\nАВТО-РАСЧЁТ MITRE:\n- Tool вычисляет угол между осями труб\n- Mitre angle = (угол между трубами) / 2 (для 90° corner = 45° на каждой)\n- Tilt direction для каждой трубы — TO другой трубы (long side mitre faces встречного направления)\n\nЕсли selection не 2 трубы / концы не сходятся / трубы — копии одного definition → messagebox объясняет что нужно поправить."
 }

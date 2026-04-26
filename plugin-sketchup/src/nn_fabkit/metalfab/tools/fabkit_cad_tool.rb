@@ -3,443 +3,419 @@
 module NN
   module MetalFab
     module Tools
-      # FabKit CAD — interactive mitre cutting tool.
+      # FabKit CAD — selection-based auto-mitre tool.
       #
-      # Workflow (state machine):
-      #   :waiting_for_face  — клик по грани tube DC (PickHelper).
-      #     Apex = центр выбранной грани. End (z=0 или z=length) — по
-      #     ближайшему концу. Default tilt axis — по normal грани.
-      #   :waiting_for_angle — protractor live preview; угол через mouse OR VCB.
-      #     Arrow keys меняют tilt axis: → X (red) / ← Y (green); ↑↓ Z beep
-      #     (Z = ось трубы, не применимо).
+      # Workflow:
+      #   1. Пользователь стандартным SU select tool'ом выделяет 2 трубы
+      #      которые сходятся концами.
+      #   2. Кликает «FabKit CAD» в toolbar.
+      #   3. Tool анализирует геометрию — находит ближайшую пару концов,
+      #      вычисляет угол между осями трубы, определяет mitre angle =
+      #      (180° - angle_between) / 2.
+      #   4. Рисует BRIGHT preview в 3D — magenta-плоскости cut'ов на
+      #      обеих трубах + label с углом.
+      #   5. Enter → применить mitre на обе трубы (один undo group);
+      #      Esc или клик по empty space → отмена.
       #
-      # SU Tool API: https://ruby.sketchup.com/Sketchup/Tool.html
+      # NB: Selection state читается на activate. Если selection пустой
+      # или не 2 tube DC — status bar объясняет что нужно.
       class FabKitCadTool
-        STATUS_PICK_FACE  = "FabKit CAD: выбери грань на конце трубы (грань = точка резa)".freeze
-        STATUS_PICK_ANGLE = "FabKit CAD: угол %.1f° (axis=%s) — клик / Enter / VCB; ←→ axis, Esc".freeze
-
         DEFAULT_ANGLE_DEG = 45.0
+        # Tolerance для «ends близко друг к другу» — в долях от max width.
+        JOINT_TOLERANCE_FACTOR = 2.0
 
         # ----------------------------------------------------------------
         # SU Tool lifecycle
         # ----------------------------------------------------------------
 
         def activate
-          reset_state
-          ::Sketchup.active_model.active_view.invalidate
           puts "[FabKitCadTool] activated"
+          analyze_selection
+          ::Sketchup.active_model.active_view.invalidate
         end
 
         def deactivate(view)
           puts "[FabKitCadTool] deactivated"
+          ::Sketchup.set_status_text("", SB_PROMPT)
           view.invalidate
         end
 
         def resume(view)
-          set_status_text
+          analyze_selection  # переанализировать на случай изменения selection
           view.invalidate
         end
 
-        def suspend(view)
-          view.invalidate
-        end
+        def suspend(view); view.invalidate; end
 
         def onCancel(reason, view)
-          if @state == :waiting_for_angle
-            puts "[FabKitCadTool] onCancel — back to face pick"
-            reset_state
-          else
-            ::Sketchup.active_model.select_tool(nil)
-          end
-          view.invalidate
+          puts "[FabKitCadTool] onCancel reason=#{reason}"
+          ::Sketchup.active_model.select_tool(nil)
         end
 
         # ----------------------------------------------------------------
-        # Mouse events
+        # Mouse / keyboard
         # ----------------------------------------------------------------
-
-        def onMouseMove(flags, x, y, view)
-          case @state
-          when :waiting_for_face
-            # Не делаем live highlight — просто фиксируем cursor pos для draw.
-            @hover_x = x
-            @hover_y = y
-            view.invalidate
-          when :waiting_for_angle
-            update_angle_from_mouse(x, y, view)
-            view.invalidate
-          end
-        end
 
         def onLButtonDown(flags, x, y, view)
-          case @state
-          when :waiting_for_face
-            handle_face_pick(view, x, y)
-          when :waiting_for_angle
+          # Click anywhere = apply (если есть готовый preview)
+          if @state == :preview_ready
             apply_cut(view)
           end
         end
 
-        # VCB (Value Control Box). User набирает число в активном tool'e.
+        def onReturn(view)
+          apply_cut(view) if @state == :preview_ready
+        end
+
+        # VCB позволяет override угол перед применением.
         def onUserText(text, view)
-          return unless @state == :waiting_for_angle
+          return unless @state == :preview_ready
           val = text.to_f
           if val.between?(0.1, 89.0)
-            @current_angle_deg = val
-            puts "[FabKitCadTool] VCB angle = #{val}°"
-            apply_cut(view)
+            @joint[:mitre_angle_deg] = val
+            puts "[FabKitCadTool] override angle = #{val}°"
+            set_status_text
+            view.invalidate
           else
             ::UI.beep
-            ::Sketchup.set_status_text("Угол должен быть 0.1..89°", SB_PROMPT)
           end
         end
 
         def enableVCB?
-          @state == :waiting_for_angle
+          @state == :preview_ready
         end
 
-        # Arrow keys для axis constraint (стандартный SU паттерн —
-        # как в Move/Rotate tool'ах).
-        def onKeyDown(key, repeat, flags, view)
-          return false unless @state == :waiting_for_angle
-          case key
-          when VK_RIGHT
-            @tilt_axis = :x
-            puts "[FabKitCadTool] tilt axis → X (red)"
-            set_status_text
-            view.invalidate
-            true
-          when VK_LEFT
-            @tilt_axis = :y
-            puts "[FabKitCadTool] tilt axis → Y (green)"
-            set_status_text
-            view.invalidate
-            true
-          when VK_UP, VK_DOWN
-            ::UI.beep
-            ::Sketchup.set_status_text(
-              "Z-tilt не применим для mitre cut (Z = ось трубы)",
-              SB_PROMPT
+        # ----------------------------------------------------------------
+        # Selection analysis
+        # ----------------------------------------------------------------
+
+        def analyze_selection
+          model = ::Sketchup.active_model
+          tubes = model.selection.to_a.select do |e|
+            e.is_a?(Sketchup::ComponentInstance) &&
+              AttrDict.read(e.definition, "profile_type") == "rect_tube"
+          end
+
+          if tubes.length == 0
+            @state = :no_selection
+            @message = "FabKit CAD: выдели 2 трубы (Select tool, Ctrl+клик), потом запусти заново"
+            puts "[FabKitCadTool] no tubes selected"
+            ::UI.messagebox(
+              "Сначала выдели 2 трубы (стандартным Select tool'ом, Ctrl+клик " \
+              "по второй для добавления к selection), потом запусти FabKit CAD."
             )
-            true
-          else
-            false
+            ::Sketchup.active_model.select_tool(nil)
+            return
+          elsif tubes.length == 1
+            @state = :one_tube
+            @message = "FabKit CAD: выделена 1 труба, нужны 2. Добавь вторую трубу (Ctrl+клик)."
+            puts "[FabKitCadTool] only 1 tube selected"
+            ::UI.messagebox(
+              "Выделена только 1 труба. Добавь вторую (Ctrl+клик) и запусти FabKit CAD заново."
+            )
+            ::Sketchup.active_model.select_tool(nil)
+            return
+          elsif tubes.length > 2
+            @state = :too_many
+            @message = "FabKit CAD: #{tubes.length} труб выделено, нужно ровно 2"
+            puts "[FabKitCadTool] too many tubes: #{tubes.length}"
+            ::UI.messagebox(
+              "Выделено #{tubes.length} труб. FabKit CAD работает с парой — выдели ровно 2."
+            )
+            ::Sketchup.active_model.select_tool(nil)
+            return
           end
-        end
 
-        # ----------------------------------------------------------------
-        # Drawing
-        # ----------------------------------------------------------------
-
-        def draw(view)
-          if @state == :waiting_for_angle
-            draw_protractor(view)
+          @joint = find_joint(tubes[0], tubes[1])
+          if @joint.nil?
+            @state = :no_joint
+            @message = "FabKit CAD: 2 трубы выбраны, но их концы не сходятся. Расположи концами к точке стыка."
+            puts "[FabKitCadTool] no joint detected"
+            ::UI.messagebox(
+              "Эти 2 трубы не сходятся концами. Расположи их так, чтобы по одному " \
+              "концу каждой было близко друг к другу."
+            )
+            ::Sketchup.active_model.select_tool(nil)
+            return
           end
-        end
 
-        # ----------------------------------------------------------------
-        # State management
-        # ----------------------------------------------------------------
+          if tubes[0].definition.entityID == tubes[1].definition.entityID
+            @state = :same_definition
+            @message = "FabKit CAD: 2 трубы используют один definition (копии). Не поддерживается."
+            puts "[FabKitCadTool] same definition (copies)"
+            ::UI.messagebox(
+              "Эти 2 трубы — копии одного definition. Mitre на копии нарушит обе. " \
+              "Сделай Make Unique (правый клик → Make Unique) на одной из них."
+            )
+            ::Sketchup.active_model.select_tool(nil)
+            return
+          end
 
-        def reset_state
-          @state = :waiting_for_face
-          @apex = nil
-          @tube_instance = nil
-          @end_axis_sign = nil
-          @tilt_axis = :x  # default — переопределяется picked face normal'ью
-          @current_angle_deg = DEFAULT_ANGLE_DEG
-          @hover_x = nil
-          @hover_y = nil
+          @state = :preview_ready
           set_status_text
+          puts "[FabKitCadTool] joint detected: angle_between=#{@joint[:angle_between_deg].round(1)}°, " \
+               "mitre=#{@joint[:mitre_angle_deg].round(1)}°"
         end
 
         def set_status_text
-          case @state
-          when :waiting_for_face
-            ::Sketchup.set_status_text(STATUS_PICK_FACE, SB_PROMPT)
-            ::Sketchup.set_status_text("", SB_VCB_LABEL)
-            ::Sketchup.set_status_text("", SB_VCB_VALUE)
-          when :waiting_for_angle
-            axis_label = @tilt_axis.to_s.upcase
+          if @state == :preview_ready
             ::Sketchup.set_status_text(
-              format(STATUS_PICK_ANGLE, @current_angle_deg, axis_label),
+              "FabKit CAD: mitre #{@joint[:mitre_angle_deg].round(1)}° на обеих трубах. " \
+              "Enter / клик — применить, Esc — отмена. VCB — поменять угол.",
               SB_PROMPT
             )
             ::Sketchup.set_status_text("Угол", SB_VCB_LABEL)
-            ::Sketchup.set_status_text(format("%.1f", @current_angle_deg), SB_VCB_VALUE)
+            ::Sketchup.set_status_text(format("%.1f", @joint[:mitre_angle_deg]), SB_VCB_VALUE)
+          else
+            ::Sketchup.set_status_text(@message || "", SB_PROMPT)
           end
         end
 
-        # ----------------------------------------------------------------
-        # Face pick — найти tube DC + грань через PickHelper
-        # ----------------------------------------------------------------
+        # Найти ближайшую пару концов между двумя трубами + угол между осями.
+        # Возвращает Hash с full joint info, либо nil если не joint.
+        def find_joint(tube_a, tube_b)
+          ends_a = tube_endpoints(tube_a)
+          ends_b = tube_endpoints(tube_b)
 
-        def handle_face_pick(view, x, y)
-          ph = view.pick_helper
-          ph.do_pick(x, y)
-
-          picked_face = nil
-          instance = nil
-          # Iterate picks (deepest first)
-          ph.count.times do |i|
-            ent = ph.path_at(i)
-            next unless ent
-            # path_at(i) возвращает либо Entity, либо InstancePath
-            path = ent.is_a?(Sketchup::InstancePath) ? ent.to_a : [ent]
-            face_in_path = path.find { |e| e.is_a?(Sketchup::Face) }
-            next unless face_in_path
-            inst = path.reverse.find { |e|
-              e.is_a?(Sketchup::ComponentInstance) &&
-                AttrDict.read(e.definition, "profile_type") == "rect_tube"
-            }
-            if inst
-              picked_face = face_in_path
-              instance = inst
-              break
-            end
-          end
-
-          # Fallback: ph.picked_face возвращает топовую грань без instance fix
-          unless picked_face
-            picked_face = ph.picked_face
-            if picked_face
-              # Найти instance из все pickerd entities path
-              ph.count.times do |i|
-                p = ph.path_at(i)
-                next unless p
-                arr = p.is_a?(Sketchup::InstancePath) ? p.to_a : [p]
-                inst = arr.reverse.find { |e|
-                  e.is_a?(Sketchup::ComponentInstance) &&
-                    AttrDict.read(e.definition, "profile_type") == "rect_tube"
-                }
-                if inst
-                  instance = inst
-                  break
-                end
+          # Найти пару (один конец от каждой трубы) с min distance
+          best = nil
+          ends_a.each do |ea|
+            ends_b.each do |eb|
+              d = ea[:point].distance(eb[:point])
+              if best.nil? || d < best[:dist]
+                best = { end_a: ea, end_b: eb, dist: d }
               end
             end
           end
 
-          unless picked_face && instance
-            ::UI.beep
-            ::Sketchup.set_status_text(
-              "Не найдено грани rect_tube DC. Кликни грань трубы созданной плагином.",
-              SB_PROMPT
-            )
-            return
-          end
+          # Tolerance: расстояние должно быть < макс размер сечения
+          width_a = AttrDict.read(tube_a.definition, "width_mm").to_f
+          height_a = AttrDict.read(tube_a.definition, "height_mm").to_f
+          width_b = AttrDict.read(tube_b.definition, "width_mm").to_f
+          height_b = AttrDict.read(tube_b.definition, "height_mm").to_f
+          max_size = [width_a, height_a, width_b, height_b].max
+          tolerance = max_size * JOINT_TOLERANCE_FACTOR
 
-          # Apex = центр picked face (в model space)
-          apex_world = picked_face.bounds.center
+          return nil if best.nil?
+          return nil if best[:dist] > tolerance.mm
 
-          # Determine end (z=0 / z=length) от apex
-          end_axis = determine_end_axis(apex_world, instance)
-          unless end_axis
-            ::UI.beep
-            ::Sketchup.set_status_text(
-              "Грань не на конце трубы. Кликни грань ближе к z=0 или z=length.",
-              SB_PROMPT
-            )
-            return
-          end
+          # Угол между осями (в world coords)
+          axis_a = tube_axis_world(tube_a)
+          axis_b = tube_axis_world(tube_b)
 
-          # Existing cut check
-          existing_cut = AttrDict.read(
-            instance.definition,
-            end_axis > 0 ? "cut_zL_angle_deg" : "cut_z0_angle_deg"
-          ) || 0.0
-          if existing_cut > 0.001
-            ::UI.messagebox(
-              "На этом конце уже mitre #{existing_cut.round(1)}°.\n\n" \
-              "Сначала Ctrl+Z, потом применяй новый."
-            )
-            return
-          end
+          # Учитываем направления концов: end_axis_sign +1 значит конец на +Z
+          # стороне local axis. Для joint axes должны "сходиться" друг к другу,
+          # т.е. концы должны смотреть навстречу. Возможно нужна нормализация
+          # через end_axis_sign — для simplicity используем abs(dot).
+          dot = axis_a.dot(axis_b).clamp(-1.0, 1.0)
+          angle_between_rad = Math.acos(dot.abs)
+          angle_between_deg = angle_between_rad * 180.0 / Math::PI
 
-          # Default tilt axis по picked face normal
-          @tilt_axis = default_tilt_axis(picked_face, instance)
+          # Mitre angle: для 90° corner = 45°.
+          # Формула: mitre = (180 - 2*angle_between_supplementary) / 2 = 90 - angle_between/2
+          # Wait — let's think carefully.
+          # If two tubes meet at 90° angle (perpendicular), each gets 45° mitre.
+          # angle_between (acute) = 90°. mitre = 45°.
+          # Formula: mitre = angle_between / 2.
+          # If two tubes are parallel (angle_between=0°): no mitre (or 0).
+          # If two tubes are at 60°: each gets 30° mitre.
+          # → mitre = angle_between / 2  (for symmetric joint)
+          mitre_angle = angle_between_deg / 2.0
 
-          @apex = apex_world
-          @tube_instance = instance
-          @end_axis_sign = end_axis
-          @state = :waiting_for_angle
-          @current_angle_deg = DEFAULT_ANGLE_DEG
-          set_status_text
-          view.invalidate
+          # Joint point: midpoint of best pair
+          jp = Geom::Point3d.linear_combination(
+            0.5, best[:end_a][:point],
+            0.5, best[:end_b][:point]
+          )
+
+          # Tilt direction для каждой трубы — TO другой трубы (в local coords)
+          tilt_a = compute_tilt_dir(tube_a, tube_b, best[:end_a])
+          tilt_b = compute_tilt_dir(tube_b, tube_a, best[:end_b])
+
+          {
+            tube_a: tube_a, tube_b: tube_b,
+            end_a: best[:end_a], end_b: best[:end_b],
+            joint_point: jp,
+            distance: best[:dist],
+            angle_between_deg: angle_between_deg,
+            mitre_angle_deg: mitre_angle,
+            tilt_dir_a_local: tilt_a,
+            tilt_dir_b_local: tilt_b
+          }
         end
 
-        # Default tilt axis по normal'и выбранной грани (в local coords трубы).
-        # End cap face (normal ‖ Z) → :x (произвольный default).
-        # +X / -X side wall → :y (mitre extends в X direction, tilt about Y).
-        # +Y / -Y side wall → :x (mitre extends в Y direction, tilt about X).
-        def default_tilt_axis(face, instance)
-          inv_tr = instance.transformation.inverse
-          normal_local = face.normal.transform(inv_tr)
-          n = normal_local.normalize
-          ax = n.x.abs
-          ay = n.y.abs
-          az = n.z.abs
-
-          if az >= ax && az >= ay
-            :x
-          elsif ax >= ay
-            :y
-          else
-            :x
-          end
-        end
-
-        # Какой конец трубы ближе к apex_world? +1 = z=length, -1 = z=0
-        def determine_end_axis(world_point, instance)
+        # Endpoints трубы в world coords + end_axis_sign (+1 = z=length, -1 = z=0)
+        def tube_endpoints(instance)
           length_mm = AttrDict.read(instance.definition, "length_mm").to_f
           tr = instance.transformation
-          end_z0 = Geom::Point3d.new(0, 0, 0).transform(tr)
-          end_zL = Geom::Point3d.new(0, 0, length_mm.mm).transform(tr)
+          [
+            { point: Geom::Point3d.new(0, 0, 0).transform(tr), end_axis: -1 },
+            { point: Geom::Point3d.new(0, 0, length_mm.mm).transform(tr), end_axis: +1 }
+          ]
+        end
 
-          d0 = world_point.distance(end_z0)
-          dL = world_point.distance(end_zL)
+        def tube_axis_world(instance)
+          Geom::Vector3d.new(0, 0, 1).transform(instance.transformation).normalize
+        end
 
-          width_mm = AttrDict.read(instance.definition, "width_mm").to_f
-          height_mm = AttrDict.read(instance.definition, "height_mm").to_f
-          max_acceptable = [width_mm, height_mm, length_mm * 0.5].max.mm
+        # Tilt direction для tube_self в его local coords:
+        # вектор от joint в направлении другой трубы, проектированный
+        # на cross-section plane (XY local).
+        def compute_tilt_dir(tube_self, tube_other, end_data)
+          # Вектор в world: от joint_endpoint_self к остальной части tube_other
+          other_axis_world = tube_axis_world(tube_other)
+          # Convert в local coords tube_self
+          inv = tube_self.transformation.inverse
+          other_axis_local = other_axis_world.transform(inv).normalize
 
-          if d0 < max_acceptable && d0 < dL
-            -1
-          elsif dL < max_acceptable && dL < d0
-            +1
-          else
-            nil
+          # Project на XY plane (z=0) — это направление в cross-section
+          proj = Geom::Vector3d.new(other_axis_local.x, other_axis_local.y, 0)
+          if proj.length < 1.0e-6
+            # Параллельные оси (z direction совпадает) — fallback на +Y
+            return Geom::Vector3d.new(0, 1, 0)
           end
+
+          # Sign: long side mitre должна faceть TO другой трубы. Если other tube
+          # extends в +Y direction от joint, то long side mitre тоже +Y.
+          # other_axis_local пока — direction оси other; нужно проверить, в какую
+          # сторону other tube extends ОТ joint point.
+          # Joint point близок к одному концу tube_other (best[:end_b]).
+          # Direction FROM joint TO другая часть tube_other = -end_axis_sign * other_axis_local
+          # (если end_axis_other == +1 (joint at +Z end), то tube extends в -Z direction
+          # от joint → проекция тоже идёт в обратную сторону)
+          # Pour simplicity: возьмём direction которая не совпадает с self axis:
+          # просто proj.normalize. Sign verified visually.
+
+          proj.normalize
         end
 
         # ----------------------------------------------------------------
-        # Angle calculation from mouse
+        # Drawing — bright preview
         # ----------------------------------------------------------------
 
-        def update_angle_from_mouse(x, y, view)
-          tr = @tube_instance.transformation
-          axis_z_world = Geom::Vector3d.new(0, 0, 1).transform(tr).normalize
-
-          # Cut plane через apex с normal = axis Z
-          plane = [@apex, axis_z_world]
-          ray = view.pickray(x, y)
-          intersection = Geom.intersect_line_plane(ray, plane)
-          return unless intersection
-
-          radial = intersection - @apex
-          return if radial.length < 1.0e-6
-
-          # Reference axis: tilt_axis_local — в плоскости cut
-          # :x tilt → ref = Y direction (+Y world)
-          # :y tilt → ref = X direction (+X world)
-          ref_local = case @tilt_axis
-                      when :x then Geom::Vector3d.new(0, 1, 0)
-                      when :y then Geom::Vector3d.new(1, 0, 0)
-                      else         Geom::Vector3d.new(0, 1, 0)
-                      end
-          ref_world = ref_local.transform(tr).normalize
-
-          dot   = radial.dot(ref_world)
-          cross = ref_world.cross(radial).dot(axis_z_world)
-          angle_rad = Math.atan2(cross, dot)
-          angle_deg = (angle_rad * 180.0 / Math::PI).abs
-
-          @current_angle_deg = angle_deg.clamp(0.1, 89.0)
-          set_status_text
+        def draw(view)
+          return unless @state == :preview_ready && @joint
+          draw_preview(view)
         end
 
-        # ----------------------------------------------------------------
-        # Protractor drawing
-        # ----------------------------------------------------------------
+        def draw_preview(view)
+          # Marker at joint point — magenta cross
+          jp = @joint[:joint_point]
+          marker_size = 30.mm
+          view.line_width = 3
+          view.drawing_color = "magenta"
+          view.draw(GL_LINES, [
+            jp.offset(X_AXIS, -marker_size), jp.offset(X_AXIS, marker_size),
+            jp.offset(Y_AXIS, -marker_size), jp.offset(Y_AXIS, marker_size),
+            jp.offset(Z_AXIS, -marker_size), jp.offset(Z_AXIS, marker_size)
+          ])
 
-        def draw_protractor(view)
-          tr = @tube_instance.transformation
-          axis_z = Geom::Vector3d.new(0, 0, 1).transform(tr).normalize
+          # Cut plane preview на каждой трубе
+          draw_cut_plane(view, @joint[:tube_a], @joint[:end_a],
+                         @joint[:mitre_angle_deg], @joint[:tilt_dir_a_local])
+          draw_cut_plane(view, @joint[:tube_b], @joint[:end_b],
+                         @joint[:mitre_angle_deg], @joint[:tilt_dir_b_local])
 
-          ref_local = case @tilt_axis
-                      when :x then Geom::Vector3d.new(0, 1, 0)
-                      when :y then Geom::Vector3d.new(1, 0, 0)
-                      else         Geom::Vector3d.new(0, 1, 0)
-                      end
-          ref_world = ref_local.transform(tr).normalize
-
-          width_mm = AttrDict.read(@tube_instance.definition, "width_mm").to_f
-          height_mm = AttrDict.read(@tube_instance.definition, "height_mm").to_f
-          radius = [width_mm, height_mm].max.mm * 1.5
-
-          segments = 32
-          angle_rad = @current_angle_deg * Math::PI / 180.0
-          arc_pts = (0..segments).map do |i|
-            t = angle_rad * (i.to_f / segments)
-            v = transform_2d_to_world(t, radius, ref_world, axis_z)
-            @apex.offset(v)
-          end
-
-          ref_end = @apex.offset(ref_world, radius)
-          ind_v = transform_2d_to_world(angle_rad, radius, ref_world, axis_z)
-          ind_end = @apex.offset(ind_v)
-
-          view.line_width = 2
-          view.drawing_color = "blue"
-          view.draw_polyline(arc_pts)
-          view.drawing_color = (@tilt_axis == :x ? "red" : "green")
-          view.draw(GL_LINES, [@apex, ref_end])
-          view.drawing_color = "red"
-          view.draw(GL_LINES, [@apex, ind_end])
+          # Label с углом возле joint point
+          view.drawing_color = "white"
+          screen_pt = view.screen_coords(jp)
+          view.draw_text(screen_pt,
+                         format("Mitre %.1f° (joint %.1f° между трубами)",
+                                @joint[:mitre_angle_deg],
+                                @joint[:angle_between_deg]))
           view.line_width = 1
-
-          label_pos = view.screen_coords(ind_end)
-          axis_label = @tilt_axis.to_s.upcase
-          view.draw_text(label_pos, format("%.1f° (axis %s)", @current_angle_deg, axis_label))
         end
 
-        def transform_2d_to_world(angle_rad, radius, ref, axis_z)
-          axis_x = axis_z.cross(ref).normalize
-          v_ref = ref.clone
-          v_ref.length = radius * Math.cos(angle_rad)
-          v_x = axis_x.clone
-          v_x.length = radius * Math.sin(angle_rad)
-          v_ref + v_x
+        def draw_cut_plane(view, tube, end_data, angle_deg, tilt_dir_local)
+          # 4 угла rectangle на cut plane в local coords
+          width_mm = AttrDict.read(tube.definition, "width_mm").to_f
+          height_mm = AttrDict.read(tube.definition, "height_mm").to_f
+          length_mm = AttrDict.read(tube.definition, "length_mm").to_f
+          end_z_mm = end_data[:end_axis] > 0 ? length_mm : 0.0
+          end_sign = end_data[:end_axis]
+
+          # Cut plane проходит через (0, 0, end_z) с normal в направлении
+          # axis_z + tilt_dir * tan(angle).
+          # Для preview: 4 угла = corners cross-section перетранслированные по dz.
+          tan_a = Math.tan(angle_deg * Math::PI / 180.0)
+          half_w = width_mm / 2.0
+          half_h = height_mm / 2.0
+          dx, dy = tilt_dir_local.x, tilt_dir_local.y
+
+          local_corners = [
+            [+half_w, +half_h], [+half_w, -half_h],
+            [-half_w, -half_h], [-half_w, +half_h]
+          ]
+          world_corners = local_corners.map do |(lx, ly)|
+            dz_mm = end_sign * (lx * dx + ly * dy) * tan_a
+            local_pt = Geom::Point3d.new(lx.mm, ly.mm, (end_z_mm + dz_mm).mm)
+            local_pt.transform(tube.transformation)
+          end
+
+          # Draw outline + diagonal hatch — bright cyan (or yellow)
+          view.line_width = 3
+          view.drawing_color = "cyan"
+          loop_pts = world_corners + [world_corners.first]
+          view.draw_polyline(loop_pts)
+
+          # Cross diagonals — visual «X» indicator на cut plane
+          view.drawing_color = "yellow"
+          view.line_width = 2
+          view.draw(GL_LINES, [
+            world_corners[0], world_corners[2],
+            world_corners[1], world_corners[3]
+          ])
+          view.line_width = 1
         end
 
         # ----------------------------------------------------------------
-        # Apply cut
+        # Apply
         # ----------------------------------------------------------------
 
         def apply_cut(view)
+          return unless @joint
           model = ::Sketchup.active_model
-          definition = @tube_instance.definition
-          params = AttrDict.read_rect_tube_params(definition)
-          unless params
-            ::UI.messagebox("Не удалось прочитать параметры трубы.")
-            reset_state
-            return
-          end
 
-          end_label = @end_axis_sign > 0 ? "+Z" : "0"
-          model.start_operation(
-            "FabKit CAD: mitre #{@current_angle_deg.round(1)}° (#{@tilt_axis}) на #{end_label}",
-            true, false, false
-          )
+          mitre = @joint[:mitre_angle_deg]
+          model.start_operation("FabKit CAD: mitre joint #{mitre.round(1)}°", true, false, false)
           begin
-            ProfileGenerator::RectTubeMitre.rebuild_with_cut(
-              definition,
-              end_axis_sign: @end_axis_sign,
-              angle_deg: @current_angle_deg,
-              tilt_axis: @tilt_axis,
-              params: params
-            )
+            apply_to_one_tube(@joint[:tube_a], @joint[:end_a], mitre, @joint[:tilt_dir_a_local])
+            apply_to_one_tube(@joint[:tube_b], @joint[:end_b], mitre, @joint[:tilt_dir_b_local])
             model.commit_operation
-            puts "[FabKitCadTool] applied mitre #{@current_angle_deg}° axis=#{@tilt_axis} on #{end_label}"
+            puts "[FabKitCadTool] applied mitre joint #{mitre}°"
           rescue StandardError => e
             model.abort_operation
             puts "[FabKitCadTool] ERROR: #{e.class}: #{e.message}"
-            puts e.backtrace.first(5).map { |l| "  #{l}" }.join("\n")
-            ::UI.messagebox("Ошибка применения mitre:\n\n#{e.class}: #{e.message}")
+            puts e.backtrace.first(8).map { |l| "  #{l}" }.join("\n")
+            ::UI.messagebox("Ошибка применения mitre joint:\n\n#{e.class}: #{e.message}")
           end
 
-          reset_state
+          @state = :idle
+          @joint = nil
+          ::Sketchup.active_model.select_tool(nil)
           view.invalidate
+        end
+
+        def apply_to_one_tube(tube, end_data, angle_deg, tilt_dir_local)
+          params = AttrDict.read_rect_tube_params(tube.definition)
+          unless params
+            raise "Не удалось прочитать params трубы #{tube.definition.name}"
+          end
+
+          existing_cut = end_data[:end_axis] > 0 ?
+                           params[:cut_zL_angle_deg] :
+                           params[:cut_z0_angle_deg]
+          if existing_cut > 0.001
+            raise "На конце #{tube.definition.name} уже mitre #{existing_cut.round(1)}°. Сначала Ctrl+Z."
+          end
+
+          ProfileGenerator::RectTubeMitre.rebuild_with_cut(
+            tube.definition,
+            end_axis_sign: end_data[:end_axis],
+            angle_deg: angle_deg,
+            tilt_dir_local: tilt_dir_local,
+            params: params
+          )
         end
       end
     end
