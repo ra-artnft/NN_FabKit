@@ -27,16 +27,13 @@ module NN
         # end_axis_sign    — +1 если cut на z=length (top), -1 если на z=0 (bottom)
         # angle_deg        — угол mitre в градусах (0 = perpendicular, 45 = классический mitre)
         # params           — Hash от AttrDict.read_rect_tube_params (перед очисткой definition)
-        def self.rebuild_with_cut(definition, end_axis_sign:, angle_deg:, params:)
+        def self.rebuild_with_cut(definition, end_axis_sign:, angle_deg:, params:, tilt_axis: :x)
           raise "definition пустой" unless definition && definition.valid?
           raise "params пустые"     unless params && params[:length_mm]
           raise "angle_deg вне диапазона (0..89)" unless angle_deg.between?(0.0, 89.0)
           raise "end_axis_sign должен быть +1 или -1" unless [1, -1].include?(end_axis_sign)
+          raise "tilt_axis должен быть :x или :y"     unless [:x, :y].include?(tilt_axis)
 
-          # 1. Перестроить perpendicular tube — это очистит definition.entities
-          #    и положит свежую трубу с original geometry.
-          # NB: write_rect_tube внутри RectTube.build перезапишет cut_*_angle_deg
-          # обратно в 0.0 — мы перезаписываем после displacement (см. шаг 5).
           existing_z0_cut = params[:cut_z0_angle_deg] || 0.0
           existing_zL_cut = params[:cut_zL_angle_deg] || 0.0
 
@@ -53,20 +50,20 @@ module NN
             steel_grade:     params[:steel_grade]
           )
 
-          # 2. Применить mitre на запрошенный конец
           if angle_deg > 1.0e-3
-            apply_mitre(definition.entities, end_axis_sign, angle_deg, params[:length_mm])
+            apply_mitre(definition.entities, end_axis_sign, angle_deg,
+                        params[:length_mm], tilt_axis)
           end
 
-          # 3. Восстановить cut на втором конце если он был (применяется
-          #    последовательно — vertex sets не пересекаются если оба концa
-          #    имеют independent cuts)
+          # Восстановить cut на втором конце если он был
           if end_axis_sign > 0 && existing_z0_cut > 1.0e-3
-            apply_mitre(definition.entities, -1, existing_z0_cut, params[:length_mm])
+            apply_mitre(definition.entities, -1, existing_z0_cut,
+                        params[:length_mm], :x)  # default axis для restore
             new_z0 = existing_z0_cut
             new_zL = angle_deg
           elsif end_axis_sign < 0 && existing_zL_cut > 1.0e-3
-            apply_mitre(definition.entities, +1, existing_zL_cut, params[:length_mm])
+            apply_mitre(definition.entities, +1, existing_zL_cut,
+                        params[:length_mm], :x)
             new_zL = existing_zL_cut
             new_z0 = angle_deg
           else
@@ -74,34 +71,33 @@ module NN
             new_zL = end_axis_sign > 0 ? angle_deg : 0.0
           end
 
-          # 4. Обновить attribute_dictionary с new cut state. write_rect_tube
-          #    в RectTube.build уже выставил 0.0 — перезаписываем.
           AttrDict.write(definition, "cut_z0_angle_deg", new_z0.to_f)
           AttrDict.write(definition, "cut_zL_angle_deg", new_zL.to_f)
 
           definition
         end
 
-        # Сдвинуть вершины cut-конца по формуле dz = sign * y * tan(angle).
-        # SU автоматически деформирует connected faces.
-        def self.apply_mitre(entities, end_axis_sign, angle_deg, length_mm)
-          # cut_z в SU coords (внутренние единицы — inches)
+        # Сдвинуть вершины cut-конца по формуле dz = sign * coord * tan(angle).
+        # tilt_axis = :x → используем Y координату (mitre extends в Y direction).
+        # tilt_axis = :y → используем X координату (mitre extends в X direction).
+        def self.apply_mitre(entities, end_axis_sign, angle_deg, length_mm, tilt_axis)
           cut_z = end_axis_sign > 0 ? length_mm.mm : 0.0
           tol   = 1.0e-3.mm
 
-          # Найти все unique вершины на cut-конце
           vertices = collect_cut_vertices(entities, cut_z, tol)
           return if vertices.empty?
 
-          # Build vector per vertex: dz = end_axis_sign * y * tan(angle_rad)
           tan_a   = Math.tan(angle_deg * Math::PI / 180.0)
           vectors = vertices.map do |v|
-            dz_mm = end_axis_sign * v.position.y.to_mm * tan_a
+            pos = v.position
+            coord_mm = case tilt_axis
+                       when :x then pos.y.to_mm
+                       when :y then pos.x.to_mm
+                       end
+            dz_mm = end_axis_sign * coord_mm * tan_a
             Geom::Vector3d.new(0, 0, dz_mm.mm)
           end
 
-          # Atomic per-vertex displacement — единственный вызов SU API,
-          # SU re-validates topology один раз в конце.
           entities.transform_by_vectors(vertices, vectors)
         end
 

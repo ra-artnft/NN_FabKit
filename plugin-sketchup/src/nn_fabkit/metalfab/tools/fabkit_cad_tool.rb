@@ -6,26 +6,25 @@ module NN
       # FabKit CAD — interactive mitre cutting tool.
       #
       # Workflow (state machine):
-      #   :waiting_for_apex  — пользователь кликает на вершину tube DC.
+      #   :waiting_for_face  — клик по грани tube DC (PickHelper).
+      #     Apex = центр выбранной грани. End (z=0 или z=length) — по
+      #     ближайшему концу. Default tilt axis — по normal грани.
       #   :waiting_for_angle — protractor live preview; угол через mouse OR VCB.
+      #     Arrow keys меняют tilt axis: → X (red) / ← Y (green); ↑↓ Z beep
+      #     (Z = ось трубы, не применимо).
       #
       # SU Tool API: https://ruby.sketchup.com/Sketchup/Tool.html
-      # Активация через Sketchup.active_model.select_tool(FabKitCadTool.new).
       class FabKitCadTool
-        STATUS_PICK_APEX  = "FabKit CAD: выбери вершину трубы — апекс угла резa".freeze
-        STATUS_PICK_ANGLE = "FabKit CAD: угол %.1f° — клик / Enter для применения, Esc для отмены".freeze
+        STATUS_PICK_FACE  = "FabKit CAD: выбери грань на конце трубы (грань = точка резa)".freeze
+        STATUS_PICK_ANGLE = "FabKit CAD: угол %.1f° (axis=%s) — клик / Enter / VCB; ←→ axis, Esc".freeze
 
         DEFAULT_ANGLE_DEG = 45.0
-        # Tolerance для определения «эта вершина — конец трубы» (z=0 или z=length).
-        VERTEX_END_TOL = 1.0e-3
 
         # ----------------------------------------------------------------
         # SU Tool lifecycle
         # ----------------------------------------------------------------
 
         def activate
-          @input_point = Sketchup::InputPoint.new
-          @hover_input_point = Sketchup::InputPoint.new
           reset_state
           ::Sketchup.active_model.active_view.invalidate
           puts "[FabKitCadTool] activated"
@@ -46,12 +45,10 @@ module NN
         end
 
         def onCancel(reason, view)
-          # reason 0 = Esc, 1 = reselect tool, 2 = undo
           if @state == :waiting_for_angle
-            puts "[FabKitCadTool] onCancel — back to apex"
+            puts "[FabKitCadTool] onCancel — back to face pick"
             reset_state
           else
-            # Cancel from initial state — switch to default Select tool
             ::Sketchup.active_model.select_tool(nil)
           end
           view.invalidate
@@ -63,8 +60,10 @@ module NN
 
         def onMouseMove(flags, x, y, view)
           case @state
-          when :waiting_for_apex
-            @hover_input_point.pick(view, x, y)
+          when :waiting_for_face
+            # Не делаем live highlight — просто фиксируем cursor pos для draw.
+            @hover_x = x
+            @hover_y = y
             view.invalidate
           when :waiting_for_angle
             update_angle_from_mouse(x, y, view)
@@ -74,16 +73,14 @@ module NN
 
         def onLButtonDown(flags, x, y, view)
           case @state
-          when :waiting_for_apex
-            @input_point.pick(view, x, y)
-            handle_apex_pick(view) if @input_point.valid?
+          when :waiting_for_face
+            handle_face_pick(view, x, y)
           when :waiting_for_angle
             apply_cut(view)
           end
         end
 
-        # VCB (Value Control Box, нижний правый угол SU). User набирает число
-        # в активном tool'e — SU вызывает onUserText.
+        # VCB (Value Control Box). User набирает число в активном tool'e.
         def onUserText(text, view)
           return unless @state == :waiting_for_angle
           val = text.to_f
@@ -101,14 +98,41 @@ module NN
           @state == :waiting_for_angle
         end
 
+        # Arrow keys для axis constraint (стандартный SU паттерн —
+        # как в Move/Rotate tool'ах).
+        def onKeyDown(key, repeat, flags, view)
+          return false unless @state == :waiting_for_angle
+          case key
+          when VK_RIGHT
+            @tilt_axis = :x
+            puts "[FabKitCadTool] tilt axis → X (red)"
+            set_status_text
+            view.invalidate
+            true
+          when VK_LEFT
+            @tilt_axis = :y
+            puts "[FabKitCadTool] tilt axis → Y (green)"
+            set_status_text
+            view.invalidate
+            true
+          when VK_UP, VK_DOWN
+            ::UI.beep
+            ::Sketchup.set_status_text(
+              "Z-tilt не применим для mitre cut (Z = ось трубы)",
+              SB_PROMPT
+            )
+            true
+          else
+            false
+          end
+        end
+
         # ----------------------------------------------------------------
-        # Drawing (protractor + indicator)
+        # Drawing
         # ----------------------------------------------------------------
 
         def draw(view)
-          if @state == :waiting_for_apex
-            @hover_input_point.draw(view) if @hover_input_point.valid?
-          elsif @state == :waiting_for_angle
+          if @state == :waiting_for_angle
             draw_protractor(view)
           end
         end
@@ -118,83 +142,124 @@ module NN
         # ----------------------------------------------------------------
 
         def reset_state
-          @state = :waiting_for_apex
+          @state = :waiting_for_face
           @apex = nil
           @tube_instance = nil
           @end_axis_sign = nil
+          @tilt_axis = :x  # default — переопределяется picked face normal'ью
           @current_angle_deg = DEFAULT_ANGLE_DEG
+          @hover_x = nil
+          @hover_y = nil
           set_status_text
         end
 
         def set_status_text
           case @state
-          when :waiting_for_apex
-            ::Sketchup.set_status_text(STATUS_PICK_APEX, SB_PROMPT)
+          when :waiting_for_face
+            ::Sketchup.set_status_text(STATUS_PICK_FACE, SB_PROMPT)
             ::Sketchup.set_status_text("", SB_VCB_LABEL)
             ::Sketchup.set_status_text("", SB_VCB_VALUE)
           when :waiting_for_angle
-            ::Sketchup.set_status_text(format(STATUS_PICK_ANGLE, @current_angle_deg), SB_PROMPT)
+            axis_label = @tilt_axis.to_s.upcase
+            ::Sketchup.set_status_text(
+              format(STATUS_PICK_ANGLE, @current_angle_deg, axis_label),
+              SB_PROMPT
+            )
             ::Sketchup.set_status_text("Угол", SB_VCB_LABEL)
             ::Sketchup.set_status_text(format("%.1f", @current_angle_deg), SB_VCB_VALUE)
           end
         end
 
         # ----------------------------------------------------------------
-        # Apex pick — найти tube DC от вершины
+        # Face pick — найти tube DC + грань через PickHelper
         # ----------------------------------------------------------------
 
-        def handle_apex_pick(view)
-          point = @input_point.position
-          # Найти ComponentInstance из instance_path
-          path = @input_point.instance_path
+        def handle_face_pick(view, x, y)
+          ph = view.pick_helper
+          ph.do_pick(x, y)
+
+          picked_face = nil
           instance = nil
-          if path
-            (0...path.length).each do |i|
-              ent = path[i]
-              if ent.is_a?(Sketchup::ComponentInstance)
-                # Проверить — это наш rect_tube?
-                if AttrDict.read(ent.definition, "profile_type") == "rect_tube"
-                  instance = ent
+          # Iterate picks (deepest first)
+          ph.count.times do |i|
+            ent = ph.path_at(i)
+            next unless ent
+            # path_at(i) возвращает либо Entity, либо InstancePath
+            path = ent.is_a?(Sketchup::InstancePath) ? ent.to_a : [ent]
+            face_in_path = path.find { |e| e.is_a?(Sketchup::Face) }
+            next unless face_in_path
+            inst = path.reverse.find { |e|
+              e.is_a?(Sketchup::ComponentInstance) &&
+                AttrDict.read(e.definition, "profile_type") == "rect_tube"
+            }
+            if inst
+              picked_face = face_in_path
+              instance = inst
+              break
+            end
+          end
+
+          # Fallback: ph.picked_face возвращает топовую грань без instance fix
+          unless picked_face
+            picked_face = ph.picked_face
+            if picked_face
+              # Найти instance из все pickerd entities path
+              ph.count.times do |i|
+                p = ph.path_at(i)
+                next unless p
+                arr = p.is_a?(Sketchup::InstancePath) ? p.to_a : [p]
+                inst = arr.reverse.find { |e|
+                  e.is_a?(Sketchup::ComponentInstance) &&
+                    AttrDict.read(e.definition, "profile_type") == "rect_tube"
+                }
+                if inst
+                  instance = inst
                   break
                 end
               end
             end
           end
 
-          unless instance
+          unless picked_face && instance
             ::UI.beep
             ::Sketchup.set_status_text(
-              "Эта вершина не на rect_tube DC. Кликни вершину трубы созданной плагином.",
+              "Не найдено грани rect_tube DC. Кликни грань трубы созданной плагином.",
               SB_PROMPT
             )
             return
           end
 
-          # Найти end_axis_sign — какой конец трубы ближе к picked point
-          end_axis = determine_end_axis(point, instance)
+          # Apex = центр picked face (в model space)
+          apex_world = picked_face.bounds.center
+
+          # Determine end (z=0 / z=length) от apex
+          end_axis = determine_end_axis(apex_world, instance)
           unless end_axis
             ::UI.beep
             ::Sketchup.set_status_text(
-              "Эта вершина не на конце трубы. Кликни вершину торца (z=0 или z=length).",
+              "Грань не на конце трубы. Кликни грань ближе к z=0 или z=length.",
               SB_PROMPT
             )
             return
           end
 
-          # Проверить — не уже ли mitred? (MVP: не cut поверх cut)
+          # Existing cut check
           existing_cut = AttrDict.read(
             instance.definition,
             end_axis > 0 ? "cut_zL_angle_deg" : "cut_z0_angle_deg"
           ) || 0.0
           if existing_cut > 0.001
             ::UI.messagebox(
-              "На этом конце трубы уже применён mitre #{existing_cut.round(1)}°.\n\n" \
-              "Сначала отмени (Ctrl+Z) предыдущий cut, потом применяй новый."
+              "На этом конце уже mitre #{existing_cut.round(1)}°.\n\n" \
+              "Сначала Ctrl+Z, потом применяй новый."
             )
             return
           end
 
-          @apex = point
+          # Default tilt axis по picked face normal
+          @tilt_axis = default_tilt_axis(picked_face, instance)
+
+          @apex = apex_world
           @tube_instance = instance
           @end_axis_sign = end_axis
           @state = :waiting_for_angle
@@ -203,25 +268,40 @@ module NN
           view.invalidate
         end
 
-        # Определить — какой конец трубы (+1 = z=length, -1 = z=0) ближе.
-        # Учитывает instance.transformation.
+        # Default tilt axis по normal'и выбранной грани (в local coords трубы).
+        # End cap face (normal ‖ Z) → :x (произвольный default).
+        # +X / -X side wall → :y (mitre extends в X direction, tilt about Y).
+        # +Y / -Y side wall → :x (mitre extends в Y direction, tilt about X).
+        def default_tilt_axis(face, instance)
+          inv_tr = instance.transformation.inverse
+          normal_local = face.normal.transform(inv_tr)
+          n = normal_local.normalize
+          ax = n.x.abs
+          ay = n.y.abs
+          az = n.z.abs
+
+          if az >= ax && az >= ay
+            :x
+          elsif ax >= ay
+            :y
+          else
+            :x
+          end
+        end
+
+        # Какой конец трубы ближе к apex_world? +1 = z=length, -1 = z=0
         def determine_end_axis(world_point, instance)
           length_mm = AttrDict.read(instance.definition, "length_mm").to_f
           tr = instance.transformation
-          # Конечные точки трубы в model space: (0,0,0) и (0,0,length)
           end_z0 = Geom::Point3d.new(0, 0, 0).transform(tr)
           end_zL = Geom::Point3d.new(0, 0, length_mm.mm).transform(tr)
 
           d0 = world_point.distance(end_z0)
           dL = world_point.distance(end_zL)
 
-          # Tolerance: должна быть «близко» к одному из концов (в пределах
-          # max(width, height) — bounding box диагональ). Иначе вершина в
-          # середине трубы — не подходит.
-          max_acceptable = [
-            AttrDict.read(instance.definition, "width_mm").to_f,
-            AttrDict.read(instance.definition, "height_mm").to_f
-          ].max.mm
+          width_mm = AttrDict.read(instance.definition, "width_mm").to_f
+          height_mm = AttrDict.read(instance.definition, "height_mm").to_f
+          max_acceptable = [width_mm, height_mm, length_mm * 0.5].max.mm
 
           if d0 < max_acceptable && d0 < dL
             -1
@@ -233,41 +313,37 @@ module NN
         end
 
         # ----------------------------------------------------------------
-        # Angle calculation from mouse position
+        # Angle calculation from mouse
         # ----------------------------------------------------------------
 
         def update_angle_from_mouse(x, y, view)
-          # Cut plane проходит через @apex, нормаль = ось трубы (Z в local, transform в model).
-          # Mouse ray → пересечение с plane перпендикулярной оси трубы → angle.
           tr = @tube_instance.transformation
-          axis_z_local = Geom::Vector3d.new(0, 0, 1)
-          axis_z_world = axis_z_local.transform(tr).normalize
+          axis_z_world = Geom::Vector3d.new(0, 0, 1).transform(tr).normalize
 
-          # Cut plane перпендикулярная оси трубы, проходит через @apex
+          # Cut plane через apex с normal = axis Z
           plane = [@apex, axis_z_world]
-
-          # Ray от cursor
           ray = view.pickray(x, y)
           intersection = Geom.intersect_line_plane(ray, plane)
           return unless intersection
 
-          # Vector от apex до intersection — radial direction
           radial = intersection - @apex
-          radial_len = radial.length
-          return if radial_len < 1.0e-6
+          return if radial.length < 1.0e-6
 
-          # Project radial на cross-section axes трубы (local Y axis в world)
-          axis_y_local = Geom::Vector3d.new(0, 1, 0)
-          axis_y_world = axis_y_local.transform(tr).normalize
+          # Reference axis: tilt_axis_local — в плоскости cut
+          # :x tilt → ref = Y direction (+Y world)
+          # :y tilt → ref = X direction (+X world)
+          ref_local = case @tilt_axis
+                      when :x then Geom::Vector3d.new(0, 1, 0)
+                      when :y then Geom::Vector3d.new(1, 0, 0)
+                      else         Geom::Vector3d.new(0, 1, 0)
+                      end
+          ref_world = ref_local.transform(tr).normalize
 
-          # Угол между radial и axis_y_world (в plane perpendicular to tube axis)
-          # Используем atan2(cross_z, dot) для signed angle
-          dot   = radial.dot(axis_y_world)
-          cross = axis_y_world.cross(radial).dot(axis_z_world)
+          dot   = radial.dot(ref_world)
+          cross = ref_world.cross(radial).dot(axis_z_world)
           angle_rad = Math.atan2(cross, dot)
           angle_deg = (angle_rad * 180.0 / Math::PI).abs
 
-          # Clamp в [0.1, 89.0] для практического диапазона mitre
           @current_angle_deg = angle_deg.clamp(0.1, 89.0)
           set_status_text
         end
@@ -279,54 +355,51 @@ module NN
         def draw_protractor(view)
           tr = @tube_instance.transformation
           axis_z = Geom::Vector3d.new(0, 0, 1).transform(tr).normalize
-          axis_y = Geom::Vector3d.new(0, 1, 0).transform(tr).normalize
 
-          # Радиус protractor'а в model units — взять разумный fixed размер
-          # пропорционально tube width. Phase B сделает screen-space константу.
+          ref_local = case @tilt_axis
+                      when :x then Geom::Vector3d.new(0, 1, 0)
+                      when :y then Geom::Vector3d.new(1, 0, 0)
+                      else         Geom::Vector3d.new(0, 1, 0)
+                      end
+          ref_world = ref_local.transform(tr).normalize
+
           width_mm = AttrDict.read(@tube_instance.definition, "width_mm").to_f
           height_mm = AttrDict.read(@tube_instance.definition, "height_mm").to_f
           radius = [width_mm, height_mm].max.mm * 1.5
 
-          # Draw arc from axis_y direction by @current_angle_deg, in plane perp to axis_z
           segments = 32
           angle_rad = @current_angle_deg * Math::PI / 180.0
-          arc_pts = []
-          (0..segments).each do |i|
+          arc_pts = (0..segments).map do |i|
             t = angle_rad * (i.to_f / segments)
-            v = transform_2d_to_world(t, radius, axis_y, axis_z)
-            arc_pts << @apex.offset(v)
+            v = transform_2d_to_world(t, radius, ref_world, axis_z)
+            @apex.offset(v)
           end
 
-          # Reference line (axis_y direction, full radius)
-          ref_end = @apex.offset(axis_y, radius)
-          # Indicator line (current angle direction)
-          ind_v = transform_2d_to_world(angle_rad, radius, axis_y, axis_z)
+          ref_end = @apex.offset(ref_world, radius)
+          ind_v = transform_2d_to_world(angle_rad, radius, ref_world, axis_z)
           ind_end = @apex.offset(ind_v)
 
           view.line_width = 2
           view.drawing_color = "blue"
           view.draw_polyline(arc_pts)
-          view.drawing_color = "gray"
+          view.drawing_color = (@tilt_axis == :x ? "red" : "green")
           view.draw(GL_LINES, [@apex, ref_end])
           view.drawing_color = "red"
           view.draw(GL_LINES, [@apex, ind_end])
           view.line_width = 1
 
-          # Label с углом — рядом с indicator end
           label_pos = view.screen_coords(ind_end)
-          view.draw_text(label_pos, format("%.1f°", @current_angle_deg))
+          axis_label = @tilt_axis.to_s.upcase
+          view.draw_text(label_pos, format("%.1f° (axis %s)", @current_angle_deg, axis_label))
         end
 
-        # 2D-в-плоскости-cut → world vector. axis_y = «0°» direction;
-        # rotated by `angle_rad` в плоскости perpendicular to axis_z.
-        def transform_2d_to_world(angle_rad, radius, axis_y, axis_z)
-          # axis_x_in_plane = axis_z × axis_y (right-handed)
-          axis_x = axis_z.cross(axis_y).normalize
-          v_y = axis_y.clone
-          v_y.length = radius * Math.cos(angle_rad)
+        def transform_2d_to_world(angle_rad, radius, ref, axis_z)
+          axis_x = axis_z.cross(ref).normalize
+          v_ref = ref.clone
+          v_ref.length = radius * Math.cos(angle_rad)
           v_x = axis_x.clone
           v_x.length = radius * Math.sin(angle_rad)
-          v_y + v_x
+          v_ref + v_x
         end
 
         # ----------------------------------------------------------------
@@ -345,7 +418,7 @@ module NN
 
           end_label = @end_axis_sign > 0 ? "+Z" : "0"
           model.start_operation(
-            "FabKit CAD: mitre #{@current_angle_deg.round(1)}° на #{end_label} конце",
+            "FabKit CAD: mitre #{@current_angle_deg.round(1)}° (#{@tilt_axis}) на #{end_label}",
             true, false, false
           )
           begin
@@ -353,10 +426,11 @@ module NN
               definition,
               end_axis_sign: @end_axis_sign,
               angle_deg: @current_angle_deg,
+              tilt_axis: @tilt_axis,
               params: params
             )
             model.commit_operation
-            puts "[FabKitCadTool] applied mitre #{@current_angle_deg}° on #{end_label}"
+            puts "[FabKitCadTool] applied mitre #{@current_angle_deg}° axis=#{@tilt_axis} on #{end_label}"
           rescue StandardError => e
             model.abort_operation
             puts "[FabKitCadTool] ERROR: #{e.class}: #{e.message}"
