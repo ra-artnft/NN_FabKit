@@ -17,8 +17,8 @@ def _split(content: str) -> list[str]:
 # ----------------------------------------------------------------------
 
 
-def test_rect_tube_default_radius_from_gost():
-    """Default radius для wall=2 → ГОСТ 30245 даёт R=4.0."""
+def test_rect_tube_default_radius_from_supplier():
+    """Default radius для wall=2 → supplier convention 1.5×t = R=3.0."""
     doc = rect_tube_box(width_mm=40, height_mm=20, wall_mm=2, length_mm=600)
     # Должны присутствовать 10 Type 144 (4 plane + 4 cylinder + 2 endcap)
     trimmed = [e for e in doc.entities if e.type_number == 144]

@@ -220,15 +220,40 @@ class IGESDocument:
         return chunks
 
 
+# Status field в D-section по IGES 5.3 §2.2.4.4:
+#   digits 1-2: Blank Status (00=visible, 01=blanked)
+#   digits 3-4: Subordinate Switch (00=independent, 01=physical, 02=logical, 03=both)
+#   digits 5-6: Entity Use Flag (00=geometry, 01=annot, 02=def, 03=other,
+#                                04=logical, 05=2D parametric, 06=construction)
+#   digits 7-8: Hierarchy (00=global, 01=use, 02=use hierarchy)
+#
+# Конвенция «как делает SolidWorks» (по reference IGS заказчика):
+#   видимыми оставляем только Type 144 (TrimmedSurface) и Type 142
+#   (CurveOnParametricSurface). Остальные — blanked (subordinate parts BREP'а),
+#   что убирает лишние iso-curves и axis/generatrix lines в CAM viewport.
+_STATUS_BY_TYPE: dict[int, str] = {
+    100: "01010000",  # Circular Arc — blanked, subordinate
+    102: "01010000",  # Composite Curve — blanked, subordinate
+    110: "01010000",  # Line — blanked, subordinate
+    120: "01010000",  # Surface of Revolution — blanked, subordinate
+    126: "01010500",  # Rational B-Spline Curve — blanked, subordinate, parametric
+    128: "01010000",  # Rational B-Spline Surface — blanked, subordinate
+    142: "00010500",  # Curve on Parametric Surface — VISIBLE, subordinate, parametric
+    144: "00000000",  # Trimmed Surface — VISIBLE, independent (top-level)
+}
+
+
 def _build_d_pair(entity: Entity, p_pointer: int, param_line_count: int) -> list[str]:
     """Построить 2-строчную D-запись для одной entity.
 
     Поля по IGES 5.3 §2.2.4. Все pointer-поля, которые мы не используем,
-    пишутся как 0 (= no association).
+    пишутся как 0 (= no association). Status field — per type lookup
+    (см. `_STATUS_BY_TYPE` выше).
     """
     type_num = entity.type_number
     form_num = entity.form_number
     label = (entity.label or "")[:8]
+    status = _STATUS_BY_TYPE.get(type_num, "00000000")
 
     line1_fields: list = [
         type_num,    # 1. Entity Type Number
@@ -239,7 +264,7 @@ def _build_d_pair(entity: Entity, p_pointer: int, param_line_count: int) -> list
         0,           # 6. View
         0,           # 7. Transformation Matrix
         0,           # 8. Label Display Associativity
-        "00000000",  # 9. Status Number (8-char string)
+        status,      # 9. Status Number (8-char string per type)
     ]
     line2_fields: list = [
         type_num,         # 1. (repeat)

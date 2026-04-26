@@ -339,21 +339,22 @@ def rect_tube_box(
     wall_mm: float,
     length_mm: float,
     radius_mm: float | None = None,
+    hollow: bool = False,
 ) -> IGESDocument:
-    """Прямоугольная труба, surface-модель (без полости пока, LOD-1).
+    """Прямоугольная труба, surface-модель.
 
     radius_mm:
       None  → авто-расчёт по ГОСТ 30245-2003: 2.0×t (t≤6), 2.5×t (6<t≤10), 3.0×t (>10)
-      0     → плоские углы (старая no-radius логика)
+      0     → плоские углы (без скруглений)
       >0    → явно заданный радиус наружного скругления
 
-    Структура (с радиусом):
-      4 outer plane faces (между скруглениями) — по 8 entities
-      4 outer cylindrical roundings (Type 120 + Type 144 trim) — по 10 entities
-      2 endcaps (rounded-rectangle boundary) — по 12 entities
-    Итого: 32 + 40 + 24 = 96 entities.
+    hollow:
+      False (default) — LOD-1: только outer surface, endcaps без отверстия.
+                        96 entities при R>0, 48 при R=0.
+      True            — LOD-2: outer + inner surface, endcaps annular (с отверстием
+                        от стенки). ~190 entities при R>0.
 
-    Без радиуса — 6 trimmed planes = 48 entities (как v0.2.0).
+    LOD-2 требует: wall_mm > 0 и (W - 2*wall) > 0, (H - 2*wall) > 0.
     """
     if width_mm <= 0 or height_mm <= 0 or length_mm <= 0:
         raise ValueError("width_mm, height_mm, length_mm должны быть > 0")
@@ -361,7 +362,7 @@ def rect_tube_box(
         raise ValueError("wall_mm должно быть ≥ 0")
 
     if radius_mm is None:
-        radius_mm = _gost_30245_radius(wall_mm)
+        radius_mm = _supplier_default_radius(wall_mm)
 
     if radius_mm < 0:
         raise ValueError("radius_mm должен быть ≥ 0")
@@ -370,30 +371,75 @@ def rect_tube_box(
             f"radius_mm={radius_mm} больше половины меньшего размера сечения"
         )
 
+    if hollow:
+        if wall_mm <= 0:
+            raise ValueError("hollow=True требует wall_mm > 0")
+        if width_mm - 2 * wall_mm <= 0 or height_mm - 2 * wall_mm <= 0:
+            raise ValueError(
+                f"hollow: 2*wall_mm ({2 * wall_mm}) >= меньшего размера сечения"
+            )
+        if radius_mm == 0:
+            raise ValueError("hollow=True требует radius_mm > 0 (LOD-2)")
+
     hw = width_mm / 2.0
     hh = height_mm / 2.0
     L = length_mm
     R = radius_mm
 
-    description = (
-        f"NN FabKit rect-tube LOD-1 (BREP): "
-        f"L={length_mm} (X) x W={width_mm} (Y) x H={height_mm} (Z), "
-        f"wall={wall_mm} mm, R={radius_mm} mm. "
-    )
-    description += (
-        "6 plane faces (no radius)." if R == 0
-        else "4 plane + 4 cylinder roundings + 2 rounded endcaps."
+    if hollow:
+        hw_in = hw - wall_mm
+        hh_in = hh - wall_mm
+        R_in = max(R - wall_mm, 0.0)
+    else:
+        hw_in = hh_in = R_in = 0.0  # not used
+
+    description = _build_description(
+        length_mm, width_mm, height_mm, wall_mm, radius_mm, hollow
     )
 
     doc = IGESDocument(description=description)
 
     if R == 0:
-        # Старая box без скруглений (back-compat, для отладки)
         _emit_box_no_radius(doc, hw, hh, L)
+    elif not hollow:
+        _emit_outer_shell(doc, hw, hh, R, L)
+        # Simple rounded endcaps (no hole)
+        for e in _build_rounded_endcap(0.0, hw, hh, R, outer_normal_sign=-1, label="E_X0"):
+            doc.add(e)
+        for e in _build_rounded_endcap(L, hw, hh, R, outer_normal_sign=+1, label="E_XL"):
+            doc.add(e)
     else:
-        _emit_box_with_radius(doc, hw, hh, R, L)
+        # LOD-2: outer + inner + annular endcaps
+        _emit_outer_shell(doc, hw, hh, R, L)
+        _emit_inner_shell(doc, hw_in, hh_in, R_in, L)
+        for e in _emit_annular_endcap(
+            x_plane=0.0,
+            hw=hw, hh=hh, R=R,
+            hw_in=hw_in, hh_in=hh_in, R_in=R_in,
+            outer_normal_sign=-1, label="E_X0",
+        ):
+            doc.add(e)
+        for e in _emit_annular_endcap(
+            x_plane=L,
+            hw=hw, hh=hh, R=R,
+            hw_in=hw_in, hh_in=hh_in, R_in=R_in,
+            outer_normal_sign=+1, label="E_XL",
+        ):
+            doc.add(e)
 
     return doc
+
+
+def _build_description(L, W, H, t, R, hollow: bool) -> str:
+    base = (
+        f"NN FabKit rect-tube {'LOD-2 hollow' if hollow else 'LOD-1'} (BREP): "
+        f"L={L} (X) x W={W} (Y) x H={H} (Z), wall={t}, R={R} mm. "
+    )
+    if R == 0:
+        return base + "6 plane faces (no radius)."
+    if not hollow:
+        return base + "4 plane + 4 cylinder + 2 rounded endcaps."
+    return base + "Outer + inner shell + 2 annular endcaps."
 
 
 def _emit_box_no_radius(doc: IGESDocument, hw: float, hh: float, L: float) -> None:
@@ -411,15 +457,10 @@ def _emit_box_no_radius(doc: IGESDocument, hw: float, hh: float, L: float) -> No
             doc.add(e)
 
 
-def _emit_box_with_radius(
+def _emit_outer_shell(
     doc: IGESDocument, hw: float, hh: float, R: float, L: float
 ) -> None:
-    """Truba с outer rounded corners. 4 plane + 4 cylinder + 2 endcap."""
-    # 4 plane faces (между скруглениями)
-    # +Y plane: y=hw, x∈[0,L], z∈[-(hh-R), +(hh-R)]
-    # +Z plane: z=hh, x∈[0,L], y∈[-(hw-R), +(hw-R)]
-    # -Y plane: y=-hw, ...
-    # -Z plane: z=-hh, ...
+    """4 outer plane (между скруглениями) + 4 outer cylindrical corner."""
     planes = [
         # +Y face: outer normal +Y. (cp10-cp00) × (cp01-cp00) = +Y → a=+Z, b=+X
         ("F_YPLUS",
@@ -442,21 +483,13 @@ def _emit_box_with_radius(
         for e in _build_trimmed_plane(c00, c10, c11, c01, label):
             doc.add(e)
 
-    # 4 outer cylindrical corner roundings
-    eY_p = (0.0,  1.0, 0.0)
-    eY_m = (0.0, -1.0, 0.0)
-    eZ_p = (0.0, 0.0,  1.0)
-    eZ_m = (0.0, 0.0, -1.0)
-
+    eY_p = (0.0,  1.0, 0.0); eY_m = (0.0, -1.0, 0.0)
+    eZ_p = (0.0,  0.0, 1.0); eZ_m = (0.0,  0.0, -1.0)
     corners = [
-        # +Y +Z corner: axis center (hw-R, hh-R), e1=+Y, e2=+Z
-        ("C_PP", hw - R,  hh - R, eY_p, eZ_p),
-        # -Y +Z corner: axis (-hw+R, hh-R), e1=+Z, e2=-Y
-        ("C_MP", -(hw - R),  hh - R, eZ_p, eY_m),
-        # -Y -Z corner: axis (-hw+R, -hh+R), e1=-Y, e2=-Z
+        ("C_PP",  hw - R,    hh - R,  eY_p, eZ_p),
+        ("C_MP", -(hw - R),  hh - R,  eZ_p, eY_m),
         ("C_MM", -(hw - R), -(hh - R), eY_m, eZ_m),
-        # +Y -Z corner: axis (hw-R, -hh+R), e1=-Z, e2=+Y
-        ("C_PM",  hw - R, -(hh - R), eZ_m, eY_p),
+        ("C_PM",  hw - R,   -(hh - R), eZ_m, eY_p),
     ]
     for label, ay, az, e1, e2 in corners:
         for e in _build_trimmed_cylinder_corner(
@@ -465,19 +498,219 @@ def _emit_box_with_radius(
         ):
             doc.add(e)
 
-    # 2 endcaps (rounded rectangle boundary)
-    for e in _build_rounded_endcap(0.0, hw, hh, R, outer_normal_sign=-1, label="E_X0"):
-        doc.add(e)
-    for e in _build_rounded_endcap(L,   hw, hh, R, outer_normal_sign=+1, label="E_XL"):
-        doc.add(e)
+
+def _emit_inner_shell(
+    doc: IGESDocument, hw_in: float, hh_in: float, R_in: float, L: float
+) -> None:
+    """4 inner plane (нормаль внутрь cavity) + 4 inner cylindrical corner.
+
+    Для inner plane: cp-порядок выбран так, чтобы нормаль = -outer_normal
+    (т.е. для +Y inner face нормаль -Y → внутрь cavity).
+    Для inner cylinder: используется тот же helper что для outer; нормаль
+    Type 120 идёт радиально outward от axis. На inner cylinder это выводит
+    нормаль в (+e1+e2) сторону, т.е. в сторону wall material (а не cavity).
+    Для CypTube feature recognition это, вероятно, OK — inner surfaces
+    интерпретируются по контексту через annular endcap trim.
+    """
+    # 4 inner plane faces — порядок углов CCW при view ИЗНУТРИ cavity
+    # (т.е. с противоположной стороны от outer normal). Это даёт нормаль -outer.
+    planes = [
+        # +Y inner face: y=hw_in. Normal должен быть -Y (внутрь cavity).
+        # a=+X, b=+Z → +X × +Z = -Y ✓
+        ("I_YPLUS",
+         (0.0, hw_in, -(hh_in - R_in)),  (L,   hw_in, -(hh_in - R_in)),
+         (L,   hw_in,  hh_in - R_in),    (0.0, hw_in,  hh_in - R_in)),
+        # +Z inner face: z=hh_in. Normal -Z.
+        # a=+Y, b=+X → +Y × +X = -Z ✓
+        ("I_ZPLUS",
+         (0.0, -(hw_in - R_in), hh_in),  (0.0,  hw_in - R_in,   hh_in),
+         (L,    hw_in - R_in,   hh_in),  (L,   -(hw_in - R_in), hh_in)),
+        # -Y inner face: y=-hw_in. Normal +Y.
+        # a=+Z, b=+X → +Z × +X = +Y ✓
+        ("I_YMINS",
+         (0.0, -hw_in, -(hh_in - R_in)), (0.0, -hw_in, hh_in - R_in),
+         (L,   -hw_in,  hh_in - R_in),   (L,   -hw_in, -(hh_in - R_in))),
+        # -Z inner face: z=-hh_in. Normal +Z.
+        # a=+X, b=+Y → +X × +Y = +Z ✓
+        ("I_ZMINS",
+         (0.0, -(hw_in - R_in), -hh_in), (L,   -(hw_in - R_in), -hh_in),
+         (L,    hw_in - R_in,   -hh_in), (0.0,  hw_in - R_in,   -hh_in)),
+    ]
+    for label, c00, c10, c11, c01 in planes:
+        for e in _build_trimmed_plane(c00, c10, c11, c01, label):
+            doc.add(e)
+
+    # 4 inner cylindrical corners. Если R_in == 0, скругления нет — пропустить.
+    if R_in <= 0:
+        return
+    eY_p = (0.0,  1.0, 0.0); eY_m = (0.0, -1.0, 0.0)
+    eZ_p = (0.0,  0.0, 1.0); eZ_m = (0.0,  0.0, -1.0)
+    # Axes inner cylinders are at SAME positions as outer (corners of inner profile
+    # at hw-wall-R_in = hw-R same X/Y as outer). Radius is R_in.
+    # axis_in_y/z = hw_in - R_in = (hw - wall) - (R - wall) = hw - R.
+    corners = [
+        ("I_CPP",  hw_in - R_in,    hh_in - R_in,  eY_p, eZ_p),
+        ("I_CMP", -(hw_in - R_in),  hh_in - R_in,  eZ_p, eY_m),
+        ("I_CMM", -(hw_in - R_in), -(hh_in - R_in), eY_m, eZ_m),
+        ("I_CPM",  hw_in - R_in,   -(hh_in - R_in), eZ_m, eY_p),
+    ]
+    for label, ay, az, e1, e2 in corners:
+        for e in _build_trimmed_cylinder_corner(
+            axis_y=ay, axis_z=az, radius=R_in, length_x=L,
+            e1=e1, e2=e2, label=label,
+        ):
+            doc.add(e)
 
 
-def _gost_30245_radius(wall_mm: float) -> float:
-    """ГОСТ 30245-2003 п. 3.5."""
+def _emit_annular_endcap(
+    x_plane: float,
+    hw: float, hh: float, R: float,
+    hw_in: float, hh_in: float, R_in: float,
+    outer_normal_sign: int,
+    label: str,
+) -> list:
+    """Endcap-кольцо: outer rounded-rect + inner rounded-rect inner-loop.
+
+    Отверстие в endcap'е соответствует cavity трубы (внутреннему просвету).
+    Inner boundary loop направлен в **противоположную** сторону outer loop
+    (CW когда outer CCW), что по IGES конвенции означает «дырка».
+    """
+    # 1. NURBS surface — плоскость с bbox outer
+    if outer_normal_sign > 0:
+        cp00 = (x_plane, -hw, -hh); cp10 = (x_plane,  hw, -hh)
+        cp01 = (x_plane, -hw,  hh); cp11 = (x_plane,  hw,  hh)
+    else:
+        cp00 = (x_plane, -hw,  hh); cp10 = (x_plane,  hw,  hh)
+        cp01 = (x_plane, -hw, -hh); cp11 = (x_plane,  hw, -hh)
+    surface = NurbsSurface(
+        cp00=cp00, cp10=cp10, cp01=cp01, cp11=cp11, label=f"S_{label[:6]}",
+    )
+
+    # 2. Outer boundary
+    outer_entities, outer_cos = _make_rounded_rect_boundary(
+        x_plane, hw, hh, R, outer_normal_sign,
+        surface=surface, label_prefix=f"O_{label[:5]}",
+    )
+
+    # 3. Inner boundary — обратное направление обхода (CW когда outer CCW)
+    if R_in > 0:
+        inner_entities, inner_cos = _make_rounded_rect_boundary(
+            x_plane, hw_in, hh_in, R_in, -outer_normal_sign,
+            surface=surface, label_prefix=f"I_{label[:5]}",
+        )
+    else:
+        inner_entities, inner_cos = _make_plain_rect_boundary(
+            x_plane, hw_in, hh_in, -outer_normal_sign,
+            surface=surface, label_prefix=f"I_{label[:5]}",
+        )
+
+    trimmed = TrimmedSurface(
+        surface=surface,
+        outer_boundary=outer_cos,
+        inner_boundaries=[inner_cos],
+        label=label[:8],
+    )
+
+    return outer_entities + inner_entities + [surface, trimmed]
+
+
+def _make_rounded_rect_boundary(
+    x_plane: float,
+    hw: float, hh: float, R: float,
+    outer_normal_sign: int,
+    surface: "NurbsSurface",
+    label_prefix: str,
+) -> tuple[list, "CurveOnParametricSurface"]:
+    """Сборка boundary loop rounded rectangle (8 кривых) + Composite + COS."""
+    R_ = R
+    x = x_plane
+    p_yp_zm = (x,  hw, -hh + R_)
+    p_yp_zp = (x,  hw,  hh - R_)
+    p_yc_zp_p = (x,  hw - R_,  hh)
+    p_yc_zp_m = (x, -hw + R_,  hh)
+    p_ym_zp = (x, -hw,  hh - R_)
+    p_ym_zm = (x, -hw, -hh + R_)
+    p_yc_zm_m = (x, -hw + R_, -hh)
+    p_yc_zm_p = (x,  hw - R_, -hh)
+
+    c_pp = (x,  hw - R_,  hh - R_)
+    c_mp = (x, -hw + R_,  hh - R_)
+    c_mm = (x, -hw + R_, -hh + R_)
+    c_pm = (x,  hw - R_, -hh + R_)
+
+    eY_p = (0.0, 1.0, 0.0); eY_m = (0.0, -1.0, 0.0)
+    eZ_p = (0.0, 0.0, 1.0); eZ_m = (0.0, 0.0, -1.0)
+
+    if outer_normal_sign > 0:
+        # CCW from +X view
+        line_yp = Line(p1=p_yp_zm, p2=p_yp_zp, label=f"{label_prefix}L1")
+        arc_pp  = _nurbs_arc_90(c_pp, eY_p, eZ_p, R_, label=f"{label_prefix}A1")
+        line_zp = Line(p1=p_yc_zp_p, p2=p_yc_zp_m, label=f"{label_prefix}L2")
+        arc_mp  = _nurbs_arc_90(c_mp, eZ_p, eY_m, R_, label=f"{label_prefix}A2")
+        line_ym = Line(p1=p_ym_zp, p2=p_ym_zm, label=f"{label_prefix}L3")
+        arc_mm  = _nurbs_arc_90(c_mm, eY_m, eZ_m, R_, label=f"{label_prefix}A3")
+        line_zm = Line(p1=p_yc_zm_m, p2=p_yc_zm_p, label=f"{label_prefix}L4")
+        arc_pm  = _nurbs_arc_90(c_pm, eZ_m, eY_p, R_, label=f"{label_prefix}A4")
+        curves = [line_yp, arc_pp, line_zp, arc_mp, line_ym, arc_mm, line_zm, arc_pm]
+    else:
+        # CCW from -X view (mirror — обратное направление обхода)
+        line_yp = Line(p1=p_yp_zp, p2=p_yp_zm, label=f"{label_prefix}L1")
+        arc_pm  = _nurbs_arc_90(c_pm, eY_p, eZ_m, R_, label=f"{label_prefix}A1")
+        line_zm = Line(p1=p_yc_zm_p, p2=p_yc_zm_m, label=f"{label_prefix}L2")
+        arc_mm  = _nurbs_arc_90(c_mm, eZ_m, eY_m, R_, label=f"{label_prefix}A2")
+        line_ym = Line(p1=p_ym_zm, p2=p_ym_zp, label=f"{label_prefix}L3")
+        arc_mp  = _nurbs_arc_90(c_mp, eY_m, eZ_p, R_, label=f"{label_prefix}A3")
+        line_zp = Line(p1=p_yc_zp_m, p2=p_yc_zp_p, label=f"{label_prefix}L4")
+        arc_pp  = _nurbs_arc_90(c_pp, eZ_p, eY_p, R_, label=f"{label_prefix}A4")
+        curves = [line_yp, arc_pm, line_zm, arc_mm, line_ym, arc_mp, line_zp, arc_pp]
+
+    composite = CompositeCurve(sub_curves=curves, label=f"{label_prefix}C")
+    cos = CurveOnParametricSurface(
+        surface=surface, boundary_3d=composite, label=f"{label_prefix}O",
+    )
+    return curves + [composite], cos
+
+
+def _make_plain_rect_boundary(
+    x_plane: float,
+    hw: float, hh: float,
+    outer_normal_sign: int,
+    surface: "NurbsSurface",
+    label_prefix: str,
+) -> tuple[list, "CurveOnParametricSurface"]:
+    """Plain rectangle boundary (4 lines) — для inner contour когда R_in=0."""
+    x = x_plane
+    if outer_normal_sign > 0:
+        # CCW from +X
+        l1 = Line(p1=(x,  hw, -hh), p2=(x,  hw,  hh), label=f"{label_prefix}L1")
+        l2 = Line(p1=(x,  hw,  hh), p2=(x, -hw,  hh), label=f"{label_prefix}L2")
+        l3 = Line(p1=(x, -hw,  hh), p2=(x, -hw, -hh), label=f"{label_prefix}L3")
+        l4 = Line(p1=(x, -hw, -hh), p2=(x,  hw, -hh), label=f"{label_prefix}L4")
+    else:
+        # CCW from -X (reversed)
+        l1 = Line(p1=(x,  hw,  hh), p2=(x,  hw, -hh), label=f"{label_prefix}L1")
+        l2 = Line(p1=(x,  hw, -hh), p2=(x, -hw, -hh), label=f"{label_prefix}L2")
+        l3 = Line(p1=(x, -hw, -hh), p2=(x, -hw,  hh), label=f"{label_prefix}L3")
+        l4 = Line(p1=(x, -hw,  hh), p2=(x,  hw,  hh), label=f"{label_prefix}L4")
+    curves = [l1, l2, l3, l4]
+    composite = CompositeCurve(sub_curves=curves, label=f"{label_prefix}C")
+    cos = CurveOnParametricSurface(
+        surface=surface, boundary_3d=composite, label=f"{label_prefix}O",
+    )
+    return curves + [composite], cos
+
+
+def _supplier_default_radius(wall_mm: float) -> float:
+    """Supplier convention (Юг-Сталь, ГОСТ 8639/8645 «по соглашению»):
+    R = 1.5×t для t ≤ 6 мм, R = 2.0×t для t > 6 мм.
+
+    Это формула, которая фактически производится поставщиком и подтверждается
+    reference-файлами заказчика (60×10×1.5 R=2.25, 40×20×2 R=3). Совпадает с
+    нижней границей допуска ГОСТ 30245-2003 (1.6t–2.4t для t ≤ 6).
+    Если нужен ГОСТ 30245 nominal — задать --radius явно (R = 2.0×t для t ≤ 6).
+    """
     if wall_mm <= 0:
         return 0.0
     if wall_mm <= 6.0:
-        return 2.0 * wall_mm
-    if wall_mm <= 10.0:
-        return 2.5 * wall_mm
-    return 3.0 * wall_mm
+        return 1.5 * wall_mm
+    return 2.0 * wall_mm

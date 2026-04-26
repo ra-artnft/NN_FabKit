@@ -57,7 +57,12 @@ def _build_parser() -> argparse.ArgumentParser:
     )
     p_tube.add_argument(
         "--radius", type=float, default=None,
-        help="радиус наружного скругления, мм. Если не задан — авто по ГОСТ 30245-2003 (R=2.0t / 2.5t / 3.0t).",
+        help="радиус наружного скругления, мм. Если не задан — supplier convention (Юг-Сталь, 8639/8645 'по соглашению'): R=1.5×t для t≤6, R=2.0×t для t>6.",
+    )
+    p_tube.add_argument(
+        "--hollow",
+        action="store_true",
+        help="LOD-2: полая труба (outer + inner shell + annular endcaps с отверстием от стенки).",
     )
     p_tube.add_argument(
         "-o", "--output", type=Path, required=True, help="путь сохранения .igs"
@@ -92,6 +97,7 @@ def main(argv: list[str] | None = None) -> int:
             wall_mm=args.wall,
             length_mm=args.length,
             radius_mm=radius,
+            hollow=args.hollow,
         )
         doc.file_name = args.output.name
         doc.write(args.output)

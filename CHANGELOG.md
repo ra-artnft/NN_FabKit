@@ -2,6 +2,34 @@
 
 Формат — по [Keep a Changelog](https://keepachangelog.com/ru/1.1.0/). Версии монорепо независимы от версии плагина; версия плагина живёт в `plugin-sketchup/src/nn_fabkit/version.rb`.
 
+## [v0.0.18] — 2026-04-26
+
+### Added (LOD-2 hollow tube)
+- **`app-desktop/nc-export` 0.3.0 → 0.4.0** — LOD-2 полая труба со стенкой. Структура: outer shell (4 plane + 4 cylinder corner) + inner shell (4 plane + 4 cylinder corner) + 2 annular endcap (Type 144 с inner_boundaries для отверстия от стенки). 184 entities на одну деталь, файл ~52 КБ.
+- CLI флаг `--hollow` активирует LOD-2.
+- Helpers в `tube/rect_tube.py`: `_emit_outer_shell`, `_emit_inner_shell`, `_emit_annular_endcap`, `_make_rounded_rect_boundary`, `_make_plain_rect_boundary`.
+
+### Verified in CypTube
+- `examples/rect-tube_60x10x1.5_L992_R2.25__v0.4.0-mimic-reference.igs` — наш hollow точно соответствует reference от заказчика (`60X10X992 21 шт.IGS`). CypTube показывает `Rect 10 × 60 R2.25 X 992`, голубым выделен inner endcap (cut path), визуализация без лишних диагональных линий.
+
+### Changed (status flags)
+- В D-section IGES для каждого entity type теперь выставляется правильный Status field per IGES 5.3 §2.2.4.4 (по конвенции SolidWorks/reference): subord entities (Type 100, 102, 110, 120, 126, 128) — **blanked** (не рендерятся в CAM viewport), top-level (Type 142, 144) — visible. Это устранило лишние iso-curves поверхностей в CypTube — теперь визуализация совпадает с reference.
+
+### Changed — критическое исправление JSON-каталога
+- **`gost-30245-rect-tube.json` v1.2 → v1.3**: ОТКАТ радиусов с ГОСТ 30245-2003 nominal (R=2.0×t) обратно на supplier convention (R=1.5×t для t≤6, R=2.0×t для t>6). Утренняя миграция v1.1→v1.2 была ошибкой: ГОСТ 30245 nominal — это «теоретический максимум», supplier (Юг-Сталь и др. электросварные тонкостенные по 8639/8645 «по соглашению») реально производит по 1.5×t.
+- Подтверждение supplier-формулы двумя реальными замерами заказчика:
+  - 60×10×1.5 → R=2.25 (1.5×1.5) — из reference IGES SolidWorks.
+  - 40×20×2 → R=3.0 (1.5×2) — фактический замер заказчика, прислан в ходе тестирования.
+- `06-sortament-ontology.md` — формула R=f(t) переписана под supplier convention. ГОСТ 30245 помечен как «теоретический максимум, supplier не производит».
+- В nc-export функция `_gost_30245_radius` переименована в `_supplier_default_radius` с правильной формулой.
+
+### Implementation notes
+- Supplier convention (1.5×t для t≤6) — это нижняя граница допуска ГОСТ 30245-2003 (1.6t–2.4t) и эквивалент правила «по соглашению» в ГОСТ 8639-82 / 8645-68. Для feature recognition в CypTube критично использовать **фактический** радиус поставщика, а не nominal стандарта — иначе cut paths не совпадут с реальной геометрией трубы.
+- Inner cylinder normals в LOD-2 идут радиально outward от axis (та же ориентация что outer cylinder). По convention хотелось бы inward (в сторону cavity), но Type 120 IGES такой ориентации не позволяет без дополнительного transformation matrix. CypTube корректно интерпретирует через annular endpcap trim — feature recognition работает.
+
+### Known cosmetic issues
+- 40×20×2 hollow в CypTube: outer endcap rounded-rect подсвечен зелёным как дополнительный cut path. Причина — наш BREP имеет дублирующиеся boundary edges (один в endcap, другой в adjacent side face), у SolidWorks reference эти edges shared. Косметика, не влияет на feature recognition.
+
 ## [v0.0.17] — 2026-04-26
 
 ### Added
