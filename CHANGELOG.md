@@ -2,6 +2,27 @@
 
 Формат — по [Keep a Changelog](https://keepachangelog.com/ru/1.1.0/). Версии монорепо независимы от версии плагина; версия плагина живёт в `plugin-sketchup/src/nn_fabkit/version.rb`.
 
+## [v0.0.27] — 2026-04-26
+
+### Added (FabKit CAD: trim mode)
+
+- **Плагин 0.11.4 → 0.11.5** — новый режим резки на bisecting plane через axis intersection.
+- **Проблема, которую решает**: vertex displacement v0.11.x резал на endpoint трубы (z=0 или z=length). Если концы труб overlap'ятся в L-corner (реальная привычка проектирования у заказчика-0), cut на endpoint оставляет лишний кусок над corner — direction tilt_dir правильный (v0.11.4), но cut просто не там.
+- **Решение**: в [fabkit_cad_tool.rb](plugin-sketchup/src/nn_fabkit/metalfab/tools/fabkit_cad_tool.rb) добавлен `@trim_mode` (default ON). Через `Geom.closest_points` находится точка пересечения axes труб; каждая труба укорачивается / удлиняется до своей closest point на её axis (`compute_trim`); затем применяется mitre на новый endpoint. Endpoint cuts оказываются точно на bisecting plane joint'а.
+- **Реализация trim**:
+  - end_axis=+1 (joint at z=length): меняется `length_mm` через `RectTube.build`, transformation.origin не двигается.
+  - end_axis=-1 (joint at z=0): сдвигается transformation.origin до axis-intersection точки + меняется `length_mm`.
+- **UX**:
+  - Клавиша **T** в preview переключает trim ON/OFF (`onKeyDown`, VK_T=84).
+  - Status bar показывает `[ТРИМ ВКЛ]` / `[ТРИМ ВЫКЛ]`.
+  - Preview label возле joint point: `Mitre 45.0° (joint 90.0°)  ТРИМ ВКЛ (T)`.
+  - Cyan cut plane preview рендерится в РЕАЛЬНОЙ позиции реза (на trimmed endpoint при trim ON) — пользователь видит exactly где будет cut до apply.
+- **Implication для production**: при trim ON `length_mm` детали обновляется (= distance от far endpoint до axis intersection). Это правильное число для NC и cut-list — деталь с такой длиной + cut angle даёт точную обрабатываемую заготовку. Inspector подхватит новую длину автоматически.
+- `compute_tilt_dir` (v0.11.4 fix через `far - joint`) остался без изменений — он correct для обоих trim modes.
+
+### Modified
+- `plugin-sketchup/src/nn_fabkit/metalfab/tools/fabkit_cad_tool.rb` — `@trim_mode`, `onKeyDown`, `compute_trim`, `find_joint`, `set_status_text`, `draw_preview`, `draw_cut_plane` (новая signature с `endpoint_world`), `apply_cut`, `apply_to_one_tube` (новый параметр `trim_data`).
+
 ## [v0.0.26] — 2026-04-26
 
 ### Fixed (FabKit CAD: zigzag mitre на L-corner)
