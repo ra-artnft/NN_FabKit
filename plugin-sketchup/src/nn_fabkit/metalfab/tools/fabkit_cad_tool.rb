@@ -228,9 +228,11 @@ module NN
             0.5, best[:end_b][:point]
           )
 
-          # Tilt direction для каждой трубы — TO другой трубы (в local coords)
-          tilt_a = compute_tilt_dir(tube_a, tube_b, best[:end_a])
-          tilt_b = compute_tilt_dir(tube_b, tube_a, best[:end_b])
+          # Tilt direction для каждой трубы — TO body другой трубы (в local
+          # coords). Передаём end_data of OTHER tube (не self) — нужно знать
+          # какой конец другой трубы при joint, чтобы определить sign её axis.
+          tilt_a = compute_tilt_dir(tube_a, tube_b, best[:end_b])
+          tilt_b = compute_tilt_dir(tube_b, tube_a, best[:end_a])
 
           {
             tube_a: tube_a, tube_b: tube_b,
@@ -258,33 +260,29 @@ module NN
           Geom::Vector3d.new(0, 0, 1).transform(instance.transformation).normalize
         end
 
-        # Tilt direction для tube_self в его local coords:
-        # вектор от joint в направлении другой трубы, проектированный
-        # на cross-section plane (XY local).
-        def compute_tilt_dir(tube_self, tube_other, end_data)
-          # Вектор в world: от joint_endpoint_self к остальной части tube_other
-          other_axis_world = tube_axis_world(tube_other)
-          # Convert в local coords tube_self
-          inv = tube_self.transformation.inverse
-          other_axis_local = other_axis_world.transform(inv).normalize
+        # Tilt direction для tube_self в его local coords (XY plane):
+        # вектор куда long side mitre должна faceть = TO body другой трубы.
+        #
+        # end_data_other — endpoint other tube'а который при joint. Используется
+        # чтобы определить sign axis: если joint at +Z конце other tube, body
+        # extends в -Z direction (axis_world.reverse).
+        def compute_tilt_dir(tube_self, tube_other, end_data_other)
+          axis_world = tube_axis_world(tube_other)
+          # Direction FROM joint TO body другой трубы:
+          #   end_axis_other == +1 (joint at z=length) → body extends -axis_world
+          #   end_axis_other == -1 (joint at z=0)      → body extends +axis_world
+          to_body_world = end_data_other[:end_axis] > 0 ? axis_world.reverse : axis_world
 
-          # Project на XY plane (z=0) — это направление в cross-section
-          proj = Geom::Vector3d.new(other_axis_local.x, other_axis_local.y, 0)
+          # Convert в local coords tube_self (только rotation effect для vector)
+          inv = tube_self.transformation.inverse
+          to_body_local = to_body_world.transform(inv).normalize
+
+          # Project на cross-section plane (XY local of tube_self)
+          proj = Geom::Vector3d.new(to_body_local.x, to_body_local.y, 0)
           if proj.length < 1.0e-6
-            # Параллельные оси (z direction совпадает) — fallback на +Y
+            # Оси параллельны (другая труба коллинеарна self) — fallback на +Y
             return Geom::Vector3d.new(0, 1, 0)
           end
-
-          # Sign: long side mitre должна faceть TO другой трубы. Если other tube
-          # extends в +Y direction от joint, то long side mitre тоже +Y.
-          # other_axis_local пока — direction оси other; нужно проверить, в какую
-          # сторону other tube extends ОТ joint point.
-          # Joint point близок к одному концу tube_other (best[:end_b]).
-          # Direction FROM joint TO другая часть tube_other = -end_axis_sign * other_axis_local
-          # (если end_axis_other == +1 (joint at +Z end), то tube extends в -Z direction
-          # от joint → проекция тоже идёт в обратную сторону)
-          # Pour simplicity: возьмём direction которая не совпадает с self axis:
-          # просто proj.normalize. Sign verified visually.
 
           proj.normalize
         end

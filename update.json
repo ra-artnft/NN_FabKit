@@ -1,5 +1,5 @@
 {
-  "latest_version": "0.11.2",
-  "rbz_url": "https://github.com/ra-artnft/NN_FabKit/releases/download/v0.11.2/nn_fabkit-0.11.2.rbz",
-  "release_notes": "v0.11.2 — FabKit CAD redesign: selection-based 2-tube auto-mitre.\n\nWORKFLOW:\n1. Стандартным SU Select tool'ом выдели 2 трубы (Ctrl+клик для добавления второй)\n2. Кликни «FabKit CAD» в toolbar — tool анализирует пару\n3. Если концы сходятся — рисует BRIGHT preview: magenta cross в joint point + cyan/yellow rectangles на cut planes обеих труб + label с углом\n4. Enter / клик / VCB-число → применить mitre на обе трубы (один undo)\n5. Esc → отмена\n\nАВТО-РАСЧЁТ MITRE:\n- Tool вычисляет угол между осями труб\n- Mitre angle = (угол между трубами) / 2 (для 90° corner = 45° на каждой)\n- Tilt direction для каждой трубы — TO другой трубы (long side mitre faces встречного направления)\n\nЕсли selection не 2 трубы / концы не сходятся / трубы — копии одного definition → messagebox объясняет что нужно поправить."
+  "latest_version": "0.11.3",
+  "rbz_url": "https://github.com/ra-artnft/NN_FabKit/releases/download/v0.11.3/nn_fabkit-0.11.3.rbz",
+  "release_notes": "v0.11.3 — FabKit CAD: tilt direction sign fix.\n\nИсправлено по фидбеку (тонкие protrusions на mitre joint result):\n\nПри computing tilt direction (в какую сторону должна faceть long side mitre) tool неправильно определял знак axis другой трубы. Если у other tube joint на её +Z конце, body extends в -Z direction (away from joint), но код брал axis as-is → tilt_dir получался ПРОТИВОПОЛОЖНЫМ → cut в неправильную сторону → overlap не убирался.\n\nFix: учитываем end_data_other[:end_axis] sign — для joint at +Z end используем reversed axis. Теперь long side mitre корректно faces TO body другой трубы при любой ориентации концов."
 }
