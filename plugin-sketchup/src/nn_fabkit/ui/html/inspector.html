@@ -11,18 +11,44 @@
     <div class="nn-version" id="nn-version">v…</div>
   </header>
 
-  <section class="nn-section" data-section="metalfab">
-    <h2 class="nn-section-title">MetalFab — сортамент трубы</h2>
+  <nav class="nn-tabs" role="tablist">
+    <button type="button" class="nn-tab is-active" id="nn-tab-metal"
+            role="tab" aria-selected="true" aria-controls="nn-pane-metal"
+            data-pane="metal">Metal FAB</button>
+    <button type="button" class="nn-tab" id="nn-tab-wood"
+            role="tab" aria-selected="false" aria-controls="nn-pane-wood"
+            data-pane="wood">Дерево FAB</button>
+  </nav>
 
-    <div class="nn-toolbar">
-      <input type="search" id="nn-search" class="nn-search"
-             placeholder="🔍 Поиск типоразмера, например 40x20"
-             autocomplete="off" spellcheck="false">
+  <section class="nn-pane is-active" id="nn-pane-metal"
+           role="tabpanel" aria-labelledby="nn-tab-metal">
+
+    <div class="nn-supplier" id="nn-supplier">
+      <span class="nn-supplier-icon">⚙</span>
+      <span class="nn-supplier-name" id="nn-supplier-name">Поставщик…</span>
     </div>
 
-    <div class="nn-catalog-meta" id="nn-catalog-meta">Загрузка каталога…</div>
+    <div class="nn-product-group">
+      <h3 class="nn-product-title">Профильная труба</h3>
 
-    <ul class="nn-catalog" id="nn-catalog" role="listbox" aria-label="Сортамент труб"></ul>
+      <div class="nn-toolbar">
+        <input type="search" id="nn-search" class="nn-search"
+               placeholder="🔍 Поиск, например 40x20"
+               autocomplete="off" spellcheck="false">
+      </div>
+
+      <div class="nn-subgroup-filters" role="tablist" aria-label="Подгруппы">
+        <button type="button" class="nn-chip is-active"
+                data-subgroup="all">Все <span class="nn-chip-count" id="nn-count-all">…</span></button>
+        <button type="button" class="nn-chip"
+                data-subgroup="square">Квадратные <span class="nn-chip-count" id="nn-count-square">…</span></button>
+        <button type="button" class="nn-chip"
+                data-subgroup="rect">Прямоугольные <span class="nn-chip-count" id="nn-count-rect">…</span></button>
+      </div>
+
+      <div class="nn-catalog-meta" id="nn-catalog-meta">Загрузка каталога…</div>
+      <ul class="nn-catalog" id="nn-catalog" role="listbox" aria-label="Сортамент труб"></ul>
+    </div>
 
     <div class="nn-create-form">
       <div class="nn-form-row">
@@ -39,6 +65,19 @@
       </button>
       <p class="nn-form-hint" id="nn-form-hint">
         Выбери типоразмер из списка выше.
+      </p>
+    </div>
+  </section>
+
+  <section class="nn-pane" id="nn-pane-wood"
+           role="tabpanel" aria-labelledby="nn-tab-wood" hidden>
+    <div class="nn-stub">
+      <div class="nn-stub-icon">🪵</div>
+      <h3 class="nn-stub-title">Дерево FAB — в разработке</h3>
+      <p class="nn-stub-text">
+        Мебельная ветка появится позже: ЛДСП, фанера, кромка, метизы.
+        Раскрой через OpenCutList Cutting Diagrams (по конвенции имён
+        материалов, без импорта GPLv3-кода).
       </p>
     </div>
   </section>

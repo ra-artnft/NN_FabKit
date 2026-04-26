@@ -1,5 +1,5 @@
 {
-  "latest_version": "0.7.0",
-  "rbz_url": "https://github.com/ra-artnft/NN_FabKit/releases/download/v0.7.0/nn_fabkit-0.7.0.rbz",
-  "release_notes": "v0.7.0 — Inspector Sprint B + критический fix загрузки плагина.\n\nДобавлено: форма «Создать «Профильная труба»» в Inspector'е (длина, марка стали, primary button). Disabled пока не выбран типоразмер; async flow с откликом «Создано: …». Под капотом — refactor CreateRectTube.create_with_params для программного входа из Inspector / MCP / тестов.\n\nИсправлено: лишний `end` в commands/check_update.rb (pre-existing с v0.4.1) ломал загрузку плагина в SketchUp 2025 / Ruby 3.2 (в SU 2024 / Ruby 2.7 проглатывалось). Теперь Inspector реально открывается. ext.version корректно берётся из VERSION константы.\n\nТочка входа: Extensions → NN FabKit → Открыть Inspector. После установки нужен рестарт SketchUp."
+  "latest_version": "0.8.0",
+  "rbz_url": "https://github.com/ra-artnft/NN_FabKit/releases/download/v0.8.0/nn_fabkit-0.8.0.rbz",
+  "release_notes": "v0.8.0 — Inspector: top tabs Metal FAB / Дерево FAB + категоризация трубы.\n\nДобавлено: top-level переключатель Metal FAB / Дерево FAB (вторая — заглушка под мебельную ветку, появится позже). В Metal FAB — chip с поставщиком (ООО «Юг-Сталь» · Краснодар, читается из supplier-поля JSON-каталога), секция «Профильная труба» с тремя subgroup-фильтрами: Все (62) / Квадратные (30) / Прямоугольные (32) — поверх существующего поиска по типоразмеру.\n\nТочка входа: Extensions → NN FabKit → Открыть Inspector. Auto-update через Проверить обновления."
 }

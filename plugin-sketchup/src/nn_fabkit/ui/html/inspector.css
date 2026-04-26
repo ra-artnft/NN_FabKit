@@ -1,6 +1,5 @@
-/* NN FabKit Inspector — Sprint A палитра.
- * Industrial neutral, без брендинга — scope B (логотип/иконки) отдельным sprint.
- * Тёмная тема через prefers-color-scheme (SU 2024+ имеет dark mode).
+/* NN FabKit Inspector — Sprint B: tabs (Metal/Wood) + supplier + subgroups.
+ * Industrial neutral, без брендинга. Тёмная тема через prefers-color-scheme.
  */
 
 * { box-sizing: border-box; }
@@ -50,28 +49,105 @@ input, button, select, textarea {
   font-variant-numeric: tabular-nums;
 }
 
-/* === Sections =========================================================== */
+/* === Top-level tabs (Metal / Wood) ====================================== */
 
-.nn-section {
-  padding: 12px 14px;
+.nn-tabs {
+  display: flex;
   border-bottom: 1px solid #e0e0e0;
+  background: #fafbfc;
 }
-.nn-section:last-child { border-bottom: none; }
 
-.nn-section-title {
-  font-size: 11px;
+.nn-tab {
+  flex: 1;
+  padding: 10px 12px;
+  background: transparent;
+  border: none;
+  border-bottom: 2px solid transparent;
+  color: #6b6b6b;
+  font-weight: 500;
+  cursor: pointer;
+  transition: color 0.1s, border-color 0.1s, background 0.1s;
+}
+.nn-tab:hover { background: #f0f2f5; color: #1a1a1a; }
+.nn-tab.is-active {
+  color: #0066cc;
+  border-bottom-color: #0066cc;
+  background: #ffffff;
+}
+
+/* === Pane (tab content) ================================================= */
+
+.nn-pane { display: none; padding: 12px 14px; border-bottom: 1px solid #e0e0e0; }
+.nn-pane.is-active { display: block; }
+
+/* === Supplier chip ====================================================== */
+
+.nn-supplier {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  margin-bottom: 12px;
+  background: #f6f7f9;
+  border: 1px solid #e0e0e0;
+  border-radius: 4px;
+}
+.nn-supplier-icon {
+  font-size: 14px;
+  color: #6b6b6b;
+}
+.nn-supplier-name {
+  font-weight: 500;
+  font-size: 12px;
+  color: #1a1a1a;
+}
+
+/* === Product group ====================================================== */
+
+.nn-product-group { margin-bottom: 12px; }
+
+.nn-product-title {
+  font-size: 12px;
   font-weight: 600;
   text-transform: uppercase;
-  letter-spacing: 0.05em;
+  letter-spacing: 0.04em;
   color: #6b6b6b;
-  margin: 0 0 10px 0;
+  margin: 0 0 8px 0;
 }
 
-.nn-section-note {
-  margin: 8px 0 0;
+/* === Subgroup filter chips ============================================== */
+
+.nn-subgroup-filters {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 8px;
+}
+
+.nn-chip {
+  flex: 1;
+  padding: 5px 8px;
+  border: 1px solid #d0d3d6;
+  border-radius: 12px;
+  background: #ffffff;
+  color: #6b6b6b;
   font-size: 11px;
-  color: #9e9e9e;
-  font-style: italic;
+  cursor: pointer;
+  transition: background 0.1s, border-color 0.1s, color 0.1s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+}
+.nn-chip:hover { background: #f0f2f5; }
+.nn-chip.is-active {
+  background: #0066cc;
+  border-color: #0066cc;
+  color: #ffffff;
+}
+.nn-chip-count {
+  font-variant-numeric: tabular-nums;
+  font-size: 10px;
+  opacity: 0.85;
 }
 
 /* === Search input ======================================================= */
@@ -105,7 +181,7 @@ input, button, select, textarea {
   list-style: none;
   margin: 0;
   padding: 0;
-  max-height: 420px;
+  max-height: 320px;
   overflow-y: auto;
   border: 1px solid #e0e0e0;
   border-radius: 4px;
@@ -219,17 +295,41 @@ input, button, select, textarea {
   text-align: center;
 }
 
-/* === Selection ========================================================== */
+/* === Wood pane stub ===================================================== */
 
-.nn-selection-empty {
-  margin: 0 0 4px 0;
+.nn-stub {
+  text-align: center;
+  padding: 30px 20px;
   color: #6b6b6b;
 }
-.nn-hint {
-  margin: 0;
-  font-size: 11px;
-  color: #9e9e9e;
+.nn-stub-icon { font-size: 32px; margin-bottom: 8px; }
+.nn-stub-title {
+  font-size: 14px;
+  font-weight: 500;
+  margin: 0 0 8px 0;
+  color: #1a1a1a;
 }
+.nn-stub-text {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.5;
+  color: #6b6b6b;
+}
+
+/* === Selection ========================================================== */
+
+.nn-section { padding: 12px 14px; border-bottom: 1px solid #e0e0e0; }
+.nn-section:last-child { border-bottom: none; }
+.nn-section-title {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #6b6b6b;
+  margin: 0 0 10px 0;
+}
+.nn-selection-empty { margin: 0 0 4px 0; color: #6b6b6b; }
+.nn-hint { margin: 0; font-size: 11px; color: #9e9e9e; }
 
 /* === Dark theme ========================================================= */
 
@@ -237,17 +337,32 @@ input, button, select, textarea {
   html, body { background: #1e1e1e; color: #e8e8e8; }
 
   .nn-header { background: #252526; border-color: #2f2f2f; }
+  .nn-tabs { background: #1e1e1e; border-color: #2f2f2f; }
+  .nn-tab { color: #9e9e9e; }
+  .nn-tab:hover { background: #2a2a2a; color: #e8e8e8; }
+  .nn-tab.is-active { background: #1e1e1e; color: #4a90e2; border-bottom-color: #4a90e2; }
+
+  .nn-pane { border-color: #2f2f2f; }
   .nn-section { border-color: #2f2f2f; }
   .nn-section-title, .nn-version, .nn-mass,
-  .nn-selection-empty, .nn-catalog-meta { color: #9e9e9e; }
+  .nn-selection-empty, .nn-catalog-meta,
+  .nn-product-title, .nn-form-label, .nn-form-hint,
+  .nn-supplier-icon { color: #9e9e9e; }
   .nn-section-note, .nn-hint, .nn-catalog-empty { color: #7a7a7a; }
 
-  .nn-search {
+  .nn-supplier { background: #252526; border-color: #2f2f2f; }
+  .nn-supplier-name { color: #e8e8e8; }
+
+  .nn-chip { background: #252526; border-color: #3a3a3a; color: #9e9e9e; }
+  .nn-chip:hover { background: #2f2f30; }
+  .nn-chip.is-active { background: #1f6feb; border-color: #1f6feb; color: #ffffff; }
+
+  .nn-search, .nn-form-input {
     background: #2a2a2a;
     color: #e8e8e8;
     border-color: #3a3a3a;
   }
-  .nn-search:focus {
+  .nn-search:focus, .nn-form-input:focus {
     border-color: #4a90e2;
     box-shadow: 0 0 0 2px rgba(74, 144, 226, 0.18);
   }
@@ -263,24 +378,14 @@ input, button, select, textarea {
   .nn-thumb { border-color: #c0c0c0; background: #1e1e1e; }
 
   .nn-create-form { border-top-color: #2f2f2f; }
-  .nn-form-label, .nn-form-hint { color: #9e9e9e; }
-  .nn-form-input {
-    background: #2a2a2a;
-    color: #e8e8e8;
-    border-color: #3a3a3a;
-  }
-  .nn-form-input:focus {
-    border-color: #4a90e2;
-    box-shadow: 0 0 0 2px rgba(74, 144, 226, 0.18);
-  }
-  .nn-button-primary {
-    background: #1f6feb;
-    border-color: #1f6feb;
-  }
+  .nn-button-primary { background: #1f6feb; border-color: #1f6feb; }
   .nn-button-primary:hover:not(:disabled) { background: #2a7ff5; border-color: #2a7ff5; }
   .nn-button-primary:disabled {
     background: #3a3a3a;
     border-color: #3a3a3a;
     color: #7a7a7a;
   }
+
+  .nn-stub-title { color: #e8e8e8; }
+  .nn-stub, .nn-stub-text { color: #9e9e9e; }
 }
