@@ -20,6 +20,9 @@
 | 07 | ruby-for-sketchup.md | Особенности Ruby-среды внутри SketchUp. |
 | 08 | reference-components-analysis.md | Разбор `Профильная_труба.skp` и `Лист.skp`. |
 | 09 | architecture-decisions.md | Архитектурные решения (ADR-001…ADR-017). |
+| 10 | iges-for-tube-nc.md | IGES для tube CAM (Type 110, 100, 122, 126). |
+| 11 | gost-profile-tubes-radii.md | ГОСТы на профильные трубы и радиусы скругления. |
+| 12 | tube-joints-geometry.md | **Стыки труб** — геометрия mitre/T/X для rect/square/round, формулы, связь с FabKit CAD. |
 | — | catalog/*.json | Первые записи сортамента (пример). |
 | — | tools/skp_dump.rb | Ruby-дампер: SketchUp-модель → JSON для корпуса примеров (см. ADR-015). |
 

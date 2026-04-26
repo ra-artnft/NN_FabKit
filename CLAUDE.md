@@ -110,6 +110,9 @@ NN_FabKit/
 | [07-ruby-for-sketchup](docs/knowledge-base/07-ruby-for-sketchup.md) | особенности Ruby-среды внутри SU |
 | [08-reference-components-analysis](docs/knowledge-base/08-reference-components-analysis.md) | что нашли в `Профильная_труба.skp` и `Лист.skp` |
 | [09-architecture-decisions](docs/knowledge-base/09-architecture-decisions.md) | все ADR полностью |
+| [10-iges-for-tube-nc](docs/knowledge-base/10-iges-for-tube-nc.md) | IGES Type 110/100/122/126 для tube CAM |
+| [11-gost-profile-tubes-radii](docs/knowledge-base/11-gost-profile-tubes-radii.md) | ГОСТы профильных труб + радиусы скругления |
+| [12-tube-joints-geometry](docs/knowledge-base/12-tube-joints-geometry.md) | **геометрия стыков** (mitre/T/X) для rect/square/round — формулы и связь с FabKit CAD |
 
 ## Доменный словарь (минимум)
 

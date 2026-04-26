@@ -2,6 +2,16 @@
 
 ## [Unreleased] / Added — 2026-04-26
 
+- `12-tube-joints-geometry.md` — справочник геометрии стыков профильных
+  труб (rect, square, round): mitre L-corner, T-joint butt/notch/mortise,
+  X-cross, Y/K фермы. Формулы для cut surface и длины детали после mitre,
+  cuts через скруглённые углы (эллиптические дуги для NC), сводная
+  таблица «профиль × тип стыка → реализация в FabKit», roadmap для
+  расширения FabKit CAD tool до T/X/round-on-round, известные баги
+  (тупой L-corner θ>90° и asymmetric mitre). Источники: ГОСТы 30245-2003,
+  8639-82, 8645-68, 10704-91, 14771-76; AISC 360 ch. K, EN 1993-1-8,
+  CIDECT, AWS D1.1; Friendess CypTube manual.
+
 - `11-gost-profile-tubes-radii.md` — справочник по ГОСТам на профильные трубы
   и радиусам скругления для feature recognition в CypTube. Покрывает
   ГОСТ 30245-2003, ГОСТ 30245-2012, ГОСТ 8645-68, ГОСТ 8639-82,
