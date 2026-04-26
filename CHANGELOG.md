@@ -2,6 +2,22 @@
 
 Формат — по [Keep a Changelog](https://keepachangelog.com/ru/1.1.0/). Версии монорепо независимы от версии плагина; версия плагина живёт в `plugin-sketchup/src/nn_fabkit/version.rb`.
 
+## [v0.0.21] — 2026-04-26
+
+### Added (Inspector Sprint B)
+- **Плагин 0.6.0 → 0.7.0** — форма «Создать «Профильная труба»» прямо в Inspector'е (HtmlDialog). Поля: длина (input number, default 1000), марка стали (select из catalog grades, default Ст3сп), primary button «Создать». Disabled state до выбора типоразмера; динамический hint меняется на «Будет создан компонент «Труба X»». После клика — async flow: JS → Ruby `nn_create_rect_tube(typesize, grade, length)` → возврат `{ok, name}` → JS hint «Создано: …».
+- `CreateRectTube.create_with_params(typesize, grade, length_mm)` — выделена из `call` для программного входа (Inspector / MCP / тесты). Возвращает Hash `{ok:, name:, typesize:, ..., error:}`.
+- Helper `Inspector.js_json(payload)` — инкапсулирует U+2028/U+2029 escape (вместо копипасты).
+- Dark theme styles для всех новых form-элементов.
+
+### Fixed
+- **`check_update.rb` syntax error** — лишний `end` на (старой) строке 78 закрывал `module CheckUpdate` слишком рано, `change_url` оказывался вне модуля. SU 2024 / Ruby 2.7 видимо проглатывал без эффекта; SU 2025 / Ruby 3.2 строже — кидает SyntaxError при загрузке плагина → каскад «Some Extensions Failed to Load». Pre-existing baggage из v0.4.1 (commit 17e9a08), пользователь не мог получить Inspector до этого fix.
+- **`ext.version`** теперь берётся из `NN::FabKit::VERSION` (был хардкод `"0.1.0"` с момента создания плагина). Extension Manager теперь показывает реальную версию.
+
+### Auto-update infrastructure
+- Опубликован GitHub release **v0.7.0** с артефактом `nn_fabkit-0.7.0.rbz`. `update.json` на master ветке указывает на новую версию.
+- Добавлен `.github/workflows/release.yml` — на push tag `v*` собирает .rbz через Python zipfile (из `plugin-sketchup/src/`) и публикует release с артефактом. Будущие версии можно публиковать одним `git tag vX.Y.Z && git push --tags`.
+
 ## [v0.0.20] — 2026-04-26
 
 ### Added (proper hollow mitre 45° + hole prototype)

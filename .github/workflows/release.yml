@@ -1,0 +1,90 @@
+name: Release plugin .rbz
+
+# Запускается на push любого тега вида vX.Y.Z. Собирает .rbz из
+# plugin-sketchup/src/ через Python zipfile (forward-slash paths — критично
+# для совместимости с SketchUp Extension Manager на Windows и macOS) и
+# публикует GitHub release с артефактом.
+#
+# Workflow для будущих обновлений:
+#   1. Бампнуть plugin-sketchup/src/nn_fabkit/version.rb
+#   2. Обновить update.json (latest_version, rbz_url до vX.Y.Z, release_notes)
+#   3. git commit + git push origin master
+#   4. git tag vX.Y.Z && git push origin vX.Y.Z
+#   5. Этот workflow создаст release с артефактом — пользовательский updater
+#      увидит новую версию и предложит обновиться.
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+
+permissions:
+  contents: write  # нужно для gh release create
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Read plugin version from tag
+        id: ver
+        run: |
+          TAG="${GITHUB_REF_NAME}"
+          VERSION="${TAG#v}"
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+
+      - name: Verify version.rb matches tag
+        run: |
+          FILE_VERSION=$(grep -oP 'VERSION\s*=\s*"\K[^"]+' plugin-sketchup/src/nn_fabkit/version.rb)
+          TAG_VERSION="${{ steps.ver.outputs.version }}"
+          if [ "$FILE_VERSION" != "$TAG_VERSION" ]; then
+            echo "::error::version.rb VERSION ($FILE_VERSION) не совпадает с git tag ($TAG_VERSION)"
+            exit 1
+          fi
+          echo "OK: version.rb = $FILE_VERSION = tag $TAG_VERSION"
+
+      - name: Build .rbz
+        run: |
+          mkdir -p build
+          OUT="build/nn_fabkit-${{ steps.ver.outputs.version }}.rbz"
+          python - <<EOF
+          import zipfile, os
+          src = 'plugin-sketchup/src'
+          out = '$OUT'
+          with zipfile.ZipFile(out, 'w', zipfile.ZIP_DEFLATED) as z:
+              for root, dirs, files in os.walk(src):
+                  for f in files:
+                      p = os.path.join(root, f)
+                      arc = os.path.relpath(p, src).replace(os.sep, '/')
+                      z.write(p, arc)
+          print(f'OK {out} {os.path.getsize(out)} bytes')
+          EOF
+          ls -la build/
+
+      - name: Extract release notes from update.json
+        id: notes
+        run: |
+          NOTES=$(python -c "import json; print(json.load(open('update.json'))['release_notes'])")
+          # Multi-line output для GitHub Actions
+          {
+            echo 'notes<<EOF_NOTES'
+            echo "$NOTES"
+            echo 'EOF_NOTES'
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Create GitHub Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release create "${{ steps.ver.outputs.tag }}" \
+            "build/nn_fabkit-${{ steps.ver.outputs.version }}.rbz" \
+            --title "${{ steps.ver.outputs.tag }}" \
+            --notes "${{ steps.notes.outputs.notes }}"

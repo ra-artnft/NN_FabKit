@@ -8,12 +8,16 @@ end
 module NN
   module FabKit
     unless defined?(EXTENSION)
+      # Версия плагина — берём из version.rb. Грузим ДО SketchupExtension.new,
+      # потому что Extension Manager читает ext.version из памяти при регистрации.
+      Sketchup.require File.join(File.dirname(__FILE__), "nn_fabkit", "version")
+
       ext = SketchupExtension.new(
         "NN FabKit",
         File.join(File.dirname(__FILE__), "nn_fabkit", "main")
       )
       ext.creator     = "NN"
-      ext.version     = "0.1.0"
+      ext.version     = NN::FabKit::VERSION
       ext.copyright   = "© 2026 NN"
       ext.description = "Проектирование металлоконструкций и мебели: " \
                         "параметрические компоненты, ТЗ в LayOut, экспорт в NC-форматы."

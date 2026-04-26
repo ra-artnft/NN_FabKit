@@ -75,7 +75,6 @@ module NN
           # отдельной командой «Сменить URL обновлений…».
           current
         end
-        end
 
         # Отдельная команда для смены URL.
         def change_url

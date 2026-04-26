@@ -29,11 +29,17 @@
     els.catalog     = $("nn-catalog");
     els.catalogMeta = $("nn-catalog-meta");
     els.search      = $("nn-search");
+    els.length      = $("nn-length");
+    els.grade       = $("nn-grade");
+    els.createBtn   = $("nn-create-btn");
+    els.formHint    = $("nn-form-hint");
 
     els.search.addEventListener("input", function (e) {
       state.filter = e.target.value.trim().toLowerCase();
       renderCatalog();
     });
+
+    els.createBtn.addEventListener("click", onCreateClick);
 
     // Стандартный мост HtmlDialog → Ruby. window.sketchup появляется только
     // когда страница открыта внутри SU; в обычном браузере её нет — это
@@ -53,7 +59,21 @@
     state.defaultGrade = payload.default_grade || null;
 
     els.version.textContent = state.version ? "v" + state.version : "v?";
+    renderGradeOptions();
     renderCatalog();
+    updateCreateButton();
+  }
+
+  function renderGradeOptions() {
+    els.grade.innerHTML = "";
+    var grades = state.grades.length ? state.grades : [""];
+    grades.forEach(function (g) {
+      var opt = document.createElement("option");
+      opt.value = g;
+      opt.textContent = g.length ? g : "—";
+      if (state.defaultGrade && g === state.defaultGrade) opt.selected = true;
+      els.grade.appendChild(opt);
+    });
   }
 
   function renderCatalog() {
@@ -155,11 +175,56 @@
     rows.forEach(function (el) {
       el.classList.toggle("is-selected", el.dataset.typesize === typesize);
     });
+    updateCreateButton();
+  }
+
+  function updateCreateButton() {
+    var hasSelection = !!state.selectedTypesize;
+    els.createBtn.disabled = !hasSelection;
+    if (hasSelection) {
+      els.formHint.textContent = "Будет создан компонент «Труба " +
+                                 state.selectedTypesize + "».";
+    } else {
+      els.formHint.textContent = "Выбери типоразмер из списка выше.";
+    }
+  }
+
+  function onCreateClick() {
+    if (!state.selectedTypesize) return;
+    var lengthMm = Number(els.length.value);
+    if (!isFinite(lengthMm) || lengthMm <= 0) {
+      els.formHint.textContent = "Длина должна быть положительным числом.";
+      els.length.focus();
+      return;
+    }
+    var grade = els.grade.value || "";
+    if (window.sketchup && typeof window.sketchup.nn_create_rect_tube === "function") {
+      els.createBtn.disabled = true;
+      els.formHint.textContent = "Создаём…";
+      window.sketchup.nn_create_rect_tube(
+        state.selectedTypesize, grade, lengthMm
+      );
+    } else {
+      els.formHint.textContent = "Inspector открыт вне SketchUp — действие недоступно.";
+    }
+  }
+
+  // Ruby уведомляет о завершении create — вернуть кнопку и подсказку в норму.
+  function createDone(result) {
+    els.createBtn.disabled = !state.selectedTypesize;
+    if (result && result.ok) {
+      els.formHint.textContent = "Создано: " + (result.name || "—");
+    } else if (result && result.error) {
+      els.formHint.textContent = "Ошибка: " + result.error;
+    } else {
+      updateCreateButton();
+    }
   }
 
   // Глобальный экспорт для Ruby execute_script.
   window.NNInspector = {
-    bootstrap: bootstrap
+    bootstrap:  bootstrap,
+    createDone: createDone
   };
 
   if (document.readyState === "loading") {

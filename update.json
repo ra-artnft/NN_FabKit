@@ -1,5 +1,5 @@
 {
-  "latest_version": "0.6.0",
-  "rbz_url": "https://github.com/ra-artnft/NN_FabKit/releases/download/v0.6.0/nn_fabkit-0.6.0.rbz",
-  "release_notes": "v0.6.0 — Inspector (Sprint A spec-03).\n\nПостоянная боковая панель плагина (UI::HtmlDialog) с тремя секциями: header (бренд + версия), MetalFab — сортамент трубы (62 типоразмера ГОСТ 30245-2003, лайв-поиск, мини-превью сечения), Selection (заглушка под Sprint C). Vanilla JS + минимальный CSS, без сборки. Тёмная тема через prefers-color-scheme. Позиция/размер сохраняются между сессиями.\n\nТочка входа: Extensions → NN FabKit → Открыть Inspector. После установки нужен рестарт SketchUp (поведение Extension Manager)."
+  "latest_version": "0.7.0",
+  "rbz_url": "https://github.com/ra-artnft/NN_FabKit/releases/download/v0.7.0/nn_fabkit-0.7.0.rbz",
+  "release_notes": "v0.7.0 — Inspector Sprint B + критический fix загрузки плагина.\n\nДобавлено: форма «Создать «Профильная труба»» в Inspector'е (длина, марка стали, primary button). Disabled пока не выбран типоразмер; async flow с откликом «Создано: …». Под капотом — refactor CreateRectTube.create_with_params для программного входа из Inspector / MCP / тестов.\n\nИсправлено: лишний `end` в commands/check_update.rb (pre-existing с v0.4.1) ломал загрузку плагина в SketchUp 2025 / Ruby 3.2 (в SU 2024 / Ruby 2.7 проглатывалось). Теперь Inspector реально открывается. ext.version корректно берётся из VERSION константы.\n\nТочка входа: Extensions → NN FabKit → Открыть Inspector. После установки нужен рестарт SketchUp."
 }

@@ -24,9 +24,23 @@
 
     <ul class="nn-catalog" id="nn-catalog" role="listbox" aria-label="Сортамент труб"></ul>
 
-    <p class="nn-section-note">
-      Sprint A: список read-only. Кнопка «Создать» придёт в Sprint B.
-    </p>
+    <div class="nn-create-form">
+      <div class="nn-form-row">
+        <label class="nn-form-label" for="nn-length">Длина, мм</label>
+        <input type="number" id="nn-length" class="nn-form-input"
+               min="1" step="1" value="1000" inputmode="numeric">
+      </div>
+      <div class="nn-form-row">
+        <label class="nn-form-label" for="nn-grade">Марка стали</label>
+        <select id="nn-grade" class="nn-form-input"></select>
+      </div>
+      <button type="button" id="nn-create-btn" class="nn-button-primary" disabled>
+        Создать «Профильная труба»
+      </button>
+      <p class="nn-form-hint" id="nn-form-hint">
+        Выбери типоразмер из списка выше.
+      </p>
+    </div>
   </section>
 
   <section class="nn-section" data-section="selection">

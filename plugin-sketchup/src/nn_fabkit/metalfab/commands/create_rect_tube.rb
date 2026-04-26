@@ -36,19 +36,45 @@ module NN
           return unless result
 
           typesize_str, grade_str, length_str = result
+          length_mm = length_str.to_f
+          outcome = create_with_params(typesize_str, grade_str, length_mm)
+
+          if outcome[:ok]
+            ::UI.messagebox(
+              "Создан компонент «#{outcome[:name]}»\n\n" \
+              "Сечение: #{outcome[:typesize]} " \
+              "(#{outcome[:width_mm]}×#{outcome[:height_mm]}, " \
+              "стенка #{outcome[:wall_mm]} мм, R=#{outcome[:radius_mm]} мм)\n" \
+              "Длина: #{outcome[:length_mm].to_i} мм\n" \
+              "Марка: #{outcome[:grade].empty? ? '—' : outcome[:grade]}\n" \
+              "Масса погонная: #{outcome[:mass_per_m_kg] || '—'} кг/м"
+            )
+          else
+            ::UI.messagebox(outcome[:error])
+          end
+        end
+
+        # Программный вход (для Inspector / MCP / тестов). Возвращает Hash:
+        #   { ok: true,  name:, typesize:, width_mm:, height_mm:, wall_mm:,
+        #     radius_mm:, length_mm:, grade:, mass_per_m_kg: }
+        # либо
+        #   { ok: false, error: "<сообщение>" }
+        # UI здесь не показываем — caller сам решает.
+        def create_with_params(typesize_str, grade_str, length_mm)
+          model = Sketchup.active_model
+          return { ok: false, error: "Нет открытой модели в SketchUp." } unless model
 
           item = Catalog.find_rect_tube(typesize_str)
           unless item
-            ::UI.messagebox("Типоразмер «#{typesize_str}» не найден в каталоге.")
-            return
+            return { ok: false, error: "Типоразмер «#{typesize_str}» не найден в каталоге." }
           end
 
-          length_mm = length_str.to_f
+          length_mm = length_mm.to_f
           if length_mm <= 0
-            ::UI.messagebox("Длина должна быть положительным числом (введено: «#{length_str}»).")
-            return
+            return { ok: false, error: "Длина должна быть положительным числом." }
           end
 
+          grade_str = grade_str.to_s
           params  = item["params"]  || {}
           derived = item["derived"] || {}
 
@@ -61,20 +87,23 @@ module NN
             model.commit_operation
           rescue StandardError => e
             model.abort_operation
-            ::UI.messagebox("Ошибка при создании компонента:\n\n#{e.class}: #{e.message}")
             puts "[NN::MetalFab] CreateRectTube ERROR: #{e.class}: #{e.message}"
             puts e.backtrace.first(8).map { |l| "  #{l}" }.join("\n")
-            return
+            return { ok: false, error: "#{e.class}: #{e.message}" }
           end
 
-          ::UI.messagebox(
-            "Создан компонент «#{definition.name}»\n\n" \
-            "Сечение: #{typesize_str} (#{params['width_mm']}×#{params['height_mm']}, " \
-            "стенка #{params['wall_mm']} мм, R=#{params['outer_radius_mm']} мм)\n" \
-            "Длина: #{length_mm.to_i} мм\n" \
-            "Марка: #{grade_str.empty? ? '—' : grade_str}\n" \
-            "Масса погонная: #{derived['mass_per_m_kg'] || '—'} кг/м"
-          )
+          {
+            ok:            true,
+            name:          definition.name,
+            typesize:      typesize_str,
+            width_mm:      params["width_mm"],
+            height_mm:     params["height_mm"],
+            wall_mm:       params["wall_mm"],
+            radius_mm:     params["outer_radius_mm"],
+            length_mm:     length_mm,
+            grade:         grade_str,
+            mass_per_m_kg: derived["mass_per_m_kg"]
+          }
         end
 
         def build_definition(model, item, grade_str, length_mm)
