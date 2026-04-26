@@ -1,5 +1,5 @@
 {
-  "latest_version": "0.10.0",
-  "rbz_url": "https://github.com/ra-artnft/NN_FabKit/releases/download/v0.10.0/nn_fabkit-0.10.0.rbz",
-  "release_notes": "v0.10.0 — Auto-update popup при старте SU + toolbar dock fix.\n\nДобавлено: при старте SketchUp плагин через 3 секунды проверяет manifest и, если доступна новая версия — показывает popup «Обновление NN FabKit доступно: vX.Y.Z. Обновить сейчас?» с YES/NO. YES → install + рестарт SU. NO → запоминает в prefs (DISMISSED_VERSION_KEY), больше не дёргает для этой же версии (для следующих — снова покажет). Сетевые ошибки и offline-старт глотает тихо, не блокирует загрузку.\n\nИсправлено: toolbar v0.9.0 не докался в верхнюю workspace area даже при ручном перетаскивании. Причина — SVG-иконка в SU 2025 рендерилась, но drag-to-dock ломала. Перешли на PNG (16/24), убрали set_validation_proc (тоже подозревали в interference). Теперь стандартное SU dock-поведение работает как у других плагинов (OCL и т.п.)."
+  "latest_version": "0.10.1",
+  "rbz_url": "https://github.com/ra-artnft/NN_FabKit/releases/download/v0.10.1/nn_fabkit-0.10.1.rbz",
+  "release_notes": "v0.10.1 — Тестовый bump для проверки auto-update popup'а из v0.10.0.\n\nНикаких функциональных изменений. Этот релиз нужен, чтобы пользователь, у которого установлена v0.10.0, увидел popup при следующем старте SU: «Обновление NN FabKit доступно: v0.10.1. Обновить сейчас?» Yes/No. Кнопка YES должна корректно скачать и поставить .rbz."
 }
