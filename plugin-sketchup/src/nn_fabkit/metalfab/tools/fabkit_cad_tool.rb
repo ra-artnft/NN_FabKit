@@ -263,21 +263,24 @@ module NN
         # Tilt direction для tube_self в его local coords (XY plane):
         # вектор куда long side mitre должна faceть = TO body другой трубы.
         #
-        # end_data_other — endpoint other tube'а который при joint. Используется
-        # чтобы определить sign axis: если joint at +Z конце other tube, body
-        # extends в -Z direction (axis_world.reverse).
+        # Реализация: explicit vector от joint endpoint OTHER tube до её far
+        # endpoint. Это direction body OTHER tube в world coords. Не зависит
+        # от axis sign conventions (не использует tube_axis_world).
+        #
+        # end_data_other — endpoint other tube'а который при joint.
         def compute_tilt_dir(tube_self, tube_other, end_data_other)
-          axis_world = tube_axis_world(tube_other)
-          # Direction FROM joint TO body другой трубы:
-          #   end_axis_other == +1 (joint at z=length) → body extends -axis_world
-          #   end_axis_other == -1 (joint at z=0)      → body extends +axis_world
-          to_body_world = end_data_other[:end_axis] > 0 ? axis_world.reverse : axis_world
+          ends_other = tube_endpoints(tube_other)
+          far_other = ends_other.find { |e| e[:end_axis] != end_data_other[:end_axis] }
+          to_body_world = far_other[:point] - end_data_other[:point]
 
-          # Convert в local coords tube_self (только rotation effect для vector)
+          # Convert в local coords tube_self (только rotation effect для vector;
+          # transform на Vector3d игнорирует translation часть transformation'а).
           inv = tube_self.transformation.inverse
-          to_body_local = to_body_world.transform(inv).normalize
+          to_body_local = to_body_world.transform(inv)
 
-          # Project на cross-section plane (XY local of tube_self)
+          # Project на cross-section plane (XY local of tube_self).
+          # Z-компонента = насколько body other tube extends along self axis,
+          # для tilt direction она нерелевантна.
           proj = Geom::Vector3d.new(to_body_local.x, to_body_local.y, 0)
           if proj.length < 1.0e-6
             # Оси параллельны (другая труба коллинеарна self) — fallback на +Y

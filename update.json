@@ -1,5 +1,5 @@
 {
-  "latest_version": "0.11.3",
-  "rbz_url": "https://github.com/ra-artnft/NN_FabKit/releases/download/v0.11.3/nn_fabkit-0.11.3.rbz",
-  "release_notes": "v0.11.3 — FabKit CAD: tilt direction sign fix.\n\nИсправлено по фидбеку (тонкие protrusions на mitre joint result):\n\nПри computing tilt direction (в какую сторону должна faceть long side mitre) tool неправильно определял знак axis другой трубы. Если у other tube joint на её +Z конце, body extends в -Z direction (away from joint), но код брал axis as-is → tilt_dir получался ПРОТИВОПОЛОЖНЫМ → cut в неправильную сторону → overlap не убирался.\n\nFix: учитываем end_data_other[:end_axis] sign — для joint at +Z end используем reversed axis. Теперь long side mitre корректно faces TO body другой трубы при любой ориентации концов."
+  "latest_version": "0.11.4",
+  "rbz_url": "https://github.com/ra-artnft/NN_FabKit/releases/download/v0.11.4/nn_fabkit-0.11.4.rbz",
+  "release_notes": "v0.11.4 — FabKit CAD: tilt direction rewrite (zigzag fix).\n\nИсправлено по фидбеку (zigzag pattern на L-corner — long side mitre оказывалась на ВНУТРЕННЕЙ стороне угла вместо внешней):\n\nВ v0.11.3 я добавил sign-fix через axis_world.reverse + end_axis_other check, но он сработал в обратную сторону на user setup. Зависимость от sign convention'ов (tube_axis_world возвращает direction local +Z, end_axis +1/-1 указывает на каком конце joint) оказалась хрупкой.\n\nФундаментальный fix: переписан compute_tilt_dir через explicit geometric vector — far_endpoint(other) - joint_endpoint(other). Это direction body OTHER tube из joint в world coords. Не используем axis_world / end_axis_sign вообще. Чистая геометрия — куда ведёт другая труба, туда и наклоняется long side."
 }

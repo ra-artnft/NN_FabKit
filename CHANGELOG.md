@@ -2,6 +2,17 @@
 
 Формат — по [Keep a Changelog](https://keepachangelog.com/ru/1.1.0/). Версии монорепо независимы от версии плагина; версия плагина живёт в `plugin-sketchup/src/nn_fabkit/version.rb`.
 
+## [v0.0.26] — 2026-04-26
+
+### Fixed (FabKit CAD: zigzag mitre на L-corner)
+
+- **Плагин 0.11.3 → 0.11.4** — `compute_tilt_dir` в [fabkit_cad_tool.rb](plugin-sketchup/src/nn_fabkit/metalfab/tools/fabkit_cad_tool.rb) переписан через explicit geometric vector `far_endpoint(other) - joint_endpoint(other)` вместо прежней комбинации `tube_axis_world + end_axis_sign`. На user setup (две перпендикулярные трубы L-corner) v0.11.3 давал «zigzag» — long side mitre оказывалась на ВНУТРЕННЕЙ стороне угла вместо внешней.
+- Причина: sign-fix `axis_world.reverse` на end_axis_other == +1 был корректен на бумаге, но взаимодействие с `Vector3d#transform(transformation.inverse)` и конкретной orientation труб у заказчика-0 давало reversed result. Геометрический подход через два endpoint'а исключает эту хрупкость — направление от joint к far end равно направлению body other tube в world coords без посредников.
+- Логика `apply_mitre` (`dz = sign × (pos · tilt_dir) × tan(angle)`) не менялась — она correct и достаточна, нужно было только надёжно вычислять `tilt_dir`.
+
+### Modified
+- `plugin-sketchup/src/nn_fabkit/metalfab/tools/fabkit_cad_tool.rb` — `compute_tilt_dir`.
+
 ## [v0.0.25] — 2026-04-26
 
 ### Added (FabKit CAD interactive mitre tool)
