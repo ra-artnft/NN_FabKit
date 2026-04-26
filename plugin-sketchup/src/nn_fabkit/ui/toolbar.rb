@@ -16,26 +16,29 @@ module NN
 
         class << self
           def register!
-            return if @toolbar  # idempotent — register! может вызваться повторно при reload
+            return if @toolbar  # idempotent
 
-            cmd = ::UI::Command.new("NN FabKit Inspector") { open_inspector }
+            cmd = ::UI::Command.new("NN FabKit Inspector") { Inspector.show }
             cmd.tooltip         = "NN FabKit — открыть Inspector"
             cmd.menu_text       = "Inspector"
             cmd.status_bar_text = "NN FabKit Inspector — боковая панель плагина"
-            cmd.set_validation_proc {
-              Inspector.visible? ? MF_CHECKED : MF_UNCHECKED
-            }
 
-            icon_path = File.join(__dir__, "icons", "inspector.svg")
-            cmd.small_icon = icon_path
-            cmd.large_icon = icon_path
+            # Используем PNG, а не SVG: SVG в SU 2025 рендерится непредсказуемо
+            # на toolbar buttons (icon вроде показывается, но drag-to-dock не
+            # работает — toolbar остаётся floating даже после ручного перетаскивания
+            # в верхнюю workspace area). PNG-fallback гарантирует стандартное
+            # поведение docking как у других плагинов (OCL и др.).
+            icons_dir = File.join(__dir__, "icons")
+            cmd.small_icon = File.join(icons_dir, "inspector-16.png")
+            cmd.large_icon = File.join(icons_dir, "inspector-24.png")
 
             tb = ::UI::Toolbar.new(TOOLBAR_NAME)
             tb.add_item(cmd)
 
-            # TB_NEVER_SHOWN — первая загрузка плагина после установки.
-            # Любое другое состояние = пользователь уже видел toolbar и
-            # сам решает показывать его или нет (restore возьмёт last state).
+            # Поведение по first-install vs subsequent:
+            #   TB_NEVER_SHOWN — первый раз после установки; show в default
+            #     position (для большинства плагинов = top, для нас тоже).
+            #   Иначе — restore last state (visibility + dock position).
             case tb.get_last_state
             when TB_NEVER_SHOWN
               tb.show
@@ -44,10 +47,6 @@ module NN
             end
 
             @toolbar = tb
-          end
-
-          def open_inspector
-            Inspector.show
           end
         end
       end

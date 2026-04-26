@@ -34,6 +34,10 @@ module NN
     unless file_loaded?(__FILE__)
       NN::FabKit::UI::Menu.register!
       NN::FabKit::UI::Toolbar.register!
+      # Фоновая проверка обновлений (через 3 сек после старта SU): если
+      # доступна новая версия — popup MB_YESNO «Обновить / Игнорировать».
+      # Сетевые ошибки тихо глотает, не блокирует загрузку SU.
+      NN::FabKit::Commands::CheckUpdate.background_check_on_startup
       file_loaded(__FILE__)
     end
   end

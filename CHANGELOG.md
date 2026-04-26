@@ -2,6 +2,30 @@
 
 Формат — по [Keep a Changelog](https://keepachangelog.com/ru/1.1.0/). Версии монорепо независимы от версии плагина; версия плагина живёт в `plugin-sketchup/src/nn_fabkit/version.rb`.
 
+## [v0.0.24] — 2026-04-26
+
+### Added (auto-update popup при старте)
+- **Плагин 0.9.0 → 0.10.0** — при старте SketchUp плагин через `UI.start_timer(3.0)` проверяет manifest и, если доступна новая версия — показывает popup «Обновление NN FabKit доступно: vX.Y.Z. Обновить сейчас?» с YES/NO.
+  - YES → existing install flow (download + `Sketchup.install_from_archive` + restart message).
+  - NO → сохраняет в Sketchup prefs (`dismissed_update_version`), не показывает popup для этой же версии повторно. Для будущих версий popup снова появится.
+- Сетевые ошибки и offline-старт глотает тихо (puts в Ruby Console), не блокирует загрузку SU.
+- Helper-методы в `Commands::CheckUpdate`: `background_check_on_startup`, `run_background_check`, `show_update_prompt`, `install_and_notify`, `dismissed?`, `dismiss!`.
+
+### Fixed (toolbar dock)
+- v0.9.0 toolbar `NN FabKit` не докался в верхнюю workspace area — даже после ручного drag'а к toolbar bar и попытки выбора через `View → Toolbars` checkbox он оставался floating'ом. Причина — SVG-иконка в SU 2025 рендерилась, но drag-to-dock мог ломаться (плюс `set_validation_proc` подозревали в interference). Решение:
+  - Заменили SVG на PNG (16×16 + 24×24, генерируем через PIL'ом supersampled 4× и downsampled с Lanczos для anti-aliasing).
+  - Убрали `cmd.set_validation_proc` (косметика подсветки кнопки — не критично).
+- Теперь стандартное SU dock-поведение работает как у других плагинов (OCL и т.п.).
+
+### New files
+- `plugin-sketchup/src/nn_fabkit/ui/icons/inspector-16.png`
+- `plugin-sketchup/src/nn_fabkit/ui/icons/inspector-24.png`
+
+### Modified
+- `plugin-sketchup/src/nn_fabkit/main.rb` — вызов `CheckUpdate.background_check_on_startup` после `Toolbar.register!`.
+- `plugin-sketchup/src/nn_fabkit/ui/toolbar.rb` — PNG icons, удалён `set_validation_proc`.
+- `plugin-sketchup/src/nn_fabkit/commands/check_update.rb` — фоновая проверка + dismissed-версия в prefs.
+
 ## [v0.0.23] — 2026-04-26
 
 ### Added (UI::Toolbar button)
