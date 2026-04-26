@@ -30,6 +30,9 @@ class Entity:
     type_number: int = field(init=False, default=0)
     form_number: int = 0
     label: str = ""
+    # Optional per-instance Status field override (8-char string per IGES 5.3
+    # §2.2.4.4). Если задан — переопределяет per-type default из document._STATUS_BY_TYPE.
+    iges_status: str | None = None
 
     def parameters(self, resolver: Resolver) -> list[str]:
         raise NotImplementedError

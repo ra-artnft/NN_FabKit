@@ -2,6 +2,17 @@
 
 Формат — по [Keep a Changelog](https://keepachangelog.com/ru/1.1.0/). Версии монорепо независимы от версии плагина; версия плагина живёт в `plugin-sketchup/src/nn_fabkit/version.rb`.
 
+## [v0.0.19] — 2026-04-26
+
+### Added
+- **`app-desktop/nc-export` 0.4.0 → 0.4.1**: per-instance `iges_status` override в Entity. Document.py использует override если задан, иначе per-type default. Это позволяет blank-нуть конкретные entity instances вместо всего type'а.
+- Outer Type 142 + Composite Curve endcap'ов теперь **blanked** (`01010500`). Inner Type 142 endcap'а (cavity hole) остаётся visible — голубой подсвет в CypTube как cut path работает.
+- Новый baseline в `examples/`: **`rect-tube_40x20x1.5_L600__v0.4.1-hollow.igs`** — труба 40×20×1.5 R=2.25 длиной 600 мм (по факту часто используемая заказчиком). 184 entities.
+- Все остальные `examples/*.igs` пере-сгенерированы под v0.4.1.
+
+### Verified
+- Outer endcap rounded-rect больше не подсвечивается зелёным как самостоятельный cut path, ходя feature recognition сохранилось (visible Type 144 use blanked Type 142 как outer_boundary — logical reference работает независимо от blank-флага). Inner endcap (cavity hole) — голубой как требуется.
+
 ## [v0.0.18] — 2026-04-26
 
 ### Added (LOD-2 hollow tube)

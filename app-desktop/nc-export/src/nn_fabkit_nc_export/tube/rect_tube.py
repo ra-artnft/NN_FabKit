@@ -298,9 +298,14 @@ def _build_rounded_endcap(
         label=f"S_{label[:6]}",
     )
     composite = CompositeCurve(sub_curves=boundary_curves, label=f"C_{label[:6]}")
+    # Blank composite + Type 142 для outer endcap boundary, чтобы CypTube
+    # не подсвечивал outer rounded-rect endcap'а как cut path (perpendicular
+    # to tube axis выглядит для CypTube как самостоятельный cut feature).
+    composite.iges_status = "01010500"
     cos = CurveOnParametricSurface(
         surface=surface, boundary_3d=composite, label=f"O_{label[:6]}",
     )
+    cos.iges_status = "01010500"
     trimmed = TrimmedSurface(
         surface=surface, outer_boundary=cos, label=label[:8],
     )
@@ -586,13 +591,24 @@ def _emit_annular_endcap(
         cp00=cp00, cp10=cp10, cp01=cp01, cp11=cp11, label=f"S_{label[:6]}",
     )
 
-    # 2. Outer boundary
+    # 2. Outer boundary. Blank его Type 142 + composite, чтобы CypTube не
+    # подсвечивал outer rounded-rect endcap'а как самостоятельный cut path.
+    # На side faces (cylinder/plane) outer Type 142 visible (видно в reference),
+    # но на endcap perpendicular to tube axis CypTube трактует его как cut feature.
     outer_entities, outer_cos = _make_rounded_rect_boundary(
         x_plane, hw, hh, R, outer_normal_sign,
         surface=surface, label_prefix=f"O_{label[:5]}",
     )
+    outer_cos.iges_status = "01010500"  # blanked, subord, parametric
+    # Find composite in outer_entities (последний элемент перед cos)
+    for e in outer_entities:
+        if e.type_number == 102:
+            e.iges_status = "01010500"
+            break
 
-    # 3. Inner boundary — обратное направление обхода (CW когда outer CCW)
+    # 3. Inner boundary — обратное направление обхода (CW когда outer CCW).
+    # Inner Type 142 ОСТАЁТСЯ visible — CypTube подсвечивает inner endcap rect
+    # как cut path (cavity hole), это правильное поведение.
     if R_in > 0:
         inner_entities, inner_cos = _make_rounded_rect_boundary(
             x_plane, hw_in, hh_in, R_in, -outer_normal_sign,

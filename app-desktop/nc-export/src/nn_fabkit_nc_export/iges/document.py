@@ -253,7 +253,7 @@ def _build_d_pair(entity: Entity, p_pointer: int, param_line_count: int) -> list
     type_num = entity.type_number
     form_num = entity.form_number
     label = (entity.label or "")[:8]
-    status = _STATUS_BY_TYPE.get(type_num, "00000000")
+    status = entity.iges_status or _STATUS_BY_TYPE.get(type_num, "00000000")
 
     line1_fields: list = [
         type_num,    # 1. Entity Type Number
