@@ -36,7 +36,8 @@
 ```
 NN_FabKit/
 ├── plugin-sketchup/      # Ruby-плагин SketchUp (скелет, v0.1.0) — единственная часть с реальным кодом
-├── app-desktop/          # заглушка — будущий standalone (UI диалога, NC, LayOut-ТЗ)
+├── app-desktop/
+│   └── nc-export/        # Python standalone: IGES writer для CNC (v0.1.0, ADR-017)
 ├── mcp-corpus/           # заглушка — будущий MCP-сервер (Python, stdio)
 ├── corpus/               # заглушка — корпус реальных заказов (см. ADR-015)
 ├── docs/knowledge-base/  # read-only база знаний (10 MD + JSON-каталоги + skp_dump.rb)
@@ -64,6 +65,13 @@ NN_FabKit/
 | MetalFab — каталог трубы (копия в плагине) | [plugin-sketchup/src/nn_fabkit/metalfab/catalogs/gost-30245-rect-tube.json](plugin-sketchup/src/nn_fabkit/metalfab/catalogs/gost-30245-rect-tube.json) |
 | MetalFab — IGES wireframe-экспорт (Type 110 + 100) | [plugin-sketchup/src/nn_fabkit/metalfab/iges_exporter/wireframe.rb](plugin-sketchup/src/nn_fabkit/metalfab/iges_exporter/wireframe.rb) |
 | MetalFab — UI-команда экспорта в IGES | [plugin-sketchup/src/nn_fabkit/metalfab/commands/export_iges.rb](plugin-sketchup/src/nn_fabkit/metalfab/commands/export_iges.rb) |
+| **nc-export (standalone) — обзор и Quickstart** | [app-desktop/nc-export/README.md](app-desktop/nc-export/README.md) |
+| nc-export — IGES core writer (S/G/D/P/T) | [app-desktop/nc-export/src/nn_fabkit_nc_export/iges/document.py](app-desktop/nc-export/src/nn_fabkit_nc_export/iges/document.py) |
+| nc-export — IGES entities (Type 110, 100, 122) | [app-desktop/nc-export/src/nn_fabkit_nc_export/iges/entities.py](app-desktop/nc-export/src/nn_fabkit_nc_export/iges/entities.py) |
+| nc-export — IGES low-level форматирование (80-col, Hollerith, fnum) | [app-desktop/nc-export/src/nn_fabkit_nc_export/iges/format.py](app-desktop/nc-export/src/nn_fabkit_nc_export/iges/format.py) |
+| nc-export — генератор прямоугольной трубы (surface-модель) | [app-desktop/nc-export/src/nn_fabkit_nc_export/tube/rect_tube.py](app-desktop/nc-export/src/nn_fabkit_nc_export/tube/rect_tube.py) |
+| nc-export — CLI (hello-surface, rect-tube) | [app-desktop/nc-export/src/nn_fabkit_nc_export/cli.py](app-desktop/nc-export/src/nn_fabkit_nc_export/cli.py) |
+| nc-export — образцы .igs для проверки в CAM | [app-desktop/nc-export/examples/](app-desktop/nc-export/examples/) |
 | Удалённое обновление плагина (manifest URL → .rbz) | [plugin-sketchup/src/nn_fabkit/updater.rb](plugin-sketchup/src/nn_fabkit/updater.rb) |
 | UI-команды updater'а (Проверить / Сменить URL) | [plugin-sketchup/src/nn_fabkit/commands/check_update.rb](plugin-sketchup/src/nn_fabkit/commands/check_update.rb) |
 | **MCP-мост Ruby (TCP сервер в SU)** | [plugin-sketchup/src/nn_fabkit/mcp/server.rb](plugin-sketchup/src/nn_fabkit/mcp/server.rb) |

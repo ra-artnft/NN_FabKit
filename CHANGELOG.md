@@ -2,6 +2,55 @@
 
 Формат — по [Keep a Changelog](https://keepachangelog.com/ru/1.1.0/). Версии монорепо независимы от версии плагина; версия плагина живёт в `plugin-sketchup/src/nn_fabkit/version.rb`.
 
+## [v0.0.16] — 2026-04-26
+
+### Added
+- `docs/knowledge-base/11-gost-profile-tubes-radii.md` (~733 строки) — справочник по российским ГОСТам на профильные трубы (30245-2003, 30245-2012, 8645-68, 8639-82, 13663-86, 32931-2015) с фокусом на радиусах скругления. Сравнительная таблица типоразмеров, формулы R=f(t), допуски, практика поставщиков, рекомендации для генератора.
+- В `gost-30245-rect-tube.json` добавлен **`supplier`-блок** с метаданными ООО «Юг-Сталь» (Краснодар, прайс 2026-04). В каждой записи `items[].derived` появилось поле `price_per_m_rub` (placeholder под цены, пока null).
+
+### Changed
+- **`gost-30245-rect-tube.json` v1.1 → v1.2**: пересчитан `outer_radius_mm` для всех 62 типоразмеров с формулы `R = 1.5×t` на номинал ГОСТ 30245-2003 п. 3.5: `R = 2.0×t` (t ≤ 6 мм), `R = 2.5×t` (6 < t ≤ 10 мм), `R = 3.0×t` (t > 10 мм). Старая формула давала занижение радиуса на ~33% и ломала feature recognition в CypTube для t ≥ 2 мм. Sync'нуто в копию плагина `plugin-sketchup/.../catalogs/`.
+- `06-sortament-ontology.md` — раздел «Правила выбора радиуса гиба» обновлён под ГОСТ 30245-2003 (формула R=2t/2.5t/3t, допуск 1.6t–2.4t для t≤6, упоминание о тонкостенных по 8639/8645).
+- **`app-desktop/nc-export` 0.1.0 → 0.2.0**: BREP-структура с Type 144 trim wrapper. Каждая грань теперь = 8 entities (4 Line + Composite Curve + NURBS Surface + Curve on Parametric Surface + Trimmed Surface). Box LOD-1 = 48 entities (вместо 12 на Type 122). Type 122 Tabulated Cylinder выкинут — CypTube/Friendess его не поддерживает (в reference-файле заказчика 0 instances), правильное представление плоской грани — Type 128 NURBS degree 1×1 поверх Type 144 trim.
+- nc-export ось трубы переориентирована с Z на **X** — конвенция Friendess (X=axial, Y=ширина, Z=высота).
+- Имена `examples/*.igs` теперь включают версию writer'а (`...__v0.2.0-brep.igs`) — чтобы в title CypTube было видно какая версия открыта.
+
+### Added (entities)
+- `iges/entities.py`: новые классы `NurbsSurface` (Type 128 degree 1×1, 2×2 control points), `CompositeCurve` (Type 102), `CurveOnParametricSurface` (Type 142), `TrimmedSurface` (Type 144).
+- 35 тестов (было 34) — добавлен `test_rect_tube_box_trimmed_surface_references_nurbs`, обновлены counts (8/48 entities вместо 1/6).
+
+### Implementation notes
+- **CypTube делает feature recognition по BREP**: для reference 60×10×992 в title окна показывает `Rect 10 × 60 R2.25 X 992` — то есть автоматически распознаёт тип профиля, размеры (это **внутренний** просвет полой трубы, не внешний габарит), радиус скругления и длину. Без скруглений и без полой структуры (LOD-2) этого не получить.
+- **Reference 60×10×1.5 R=2.25** соответствует формуле `R = 1.5×t` (тонкостенная, 8639/8645 «по соглашению»), не ГОСТ 30245. Тонкостенные позиции в JSON формально переведены на ГОСТ 30245 для единообразия — требует подтверждения замером штангенциркулем фактических партий Юг-Сталь.
+- `examples/*.IGS` (uppercase, reference от заказчика) добавлены в `.gitignore` — G-section может содержать пути с именами клиентов.
+
+### Known limitations (нерешённое)
+- Скругления углов профиля ещё не реализованы (Type 100 directrix + Type 120 Surface of Revolution) — следующий шаг.
+- Полая труба LOD-2 (4 inner side faces + endcaps с отверстием от стенки через `inner_boundaries` в Type 144) — следующий шаг после скруглений. Без неё CypTube не показывает корректный «внутренний» размер трубы.
+
+## [v0.0.15] — 2026-04-25
+
+### Added
+- **`app-desktop/nc-export/`** — новый Python standalone-проект v0.1.0 (ADR-017): собственный IGES-конвертёр для CNC. Stdlib-only, Python 3.10+, нулевые runtime-зависимости.
+- IGES core writer (`iges/document.py`, `iges/entities.py`, `iges/format.py`): корректный 80-col fixed-format, S/G/D/P/T-секции, sequence numbering, топ-сорт по cross-references, CRLF line endings, ASCII без BOM. Hollerith-строки, форматирование чисел без экспонент, back-pointers в P-секции.
+- Поддержанные entities: Type 110 (Line), Type 100 (Circular Arc), Type 122 (Tabulated Cylinder).
+- Шаг 1 — `nn-fabkit-nc-export hello-surface --width W --length L`: одна Type 122 поверхность W×L (smoke-тест совместимости с CAM, 2 entities).
+- Шаг 2 — `nn-fabkit-nc-export rect-tube --width W --height H --wall t --length L --no-radius`: closed box LOD-1 без скруглений (4 боковых грани + 2 endcaps, surface-модель из 12 entities).
+- 34 unit-теста (pytest) на низкоуровневое форматирование, структурную валидность IGES (80-col, T-section счётчики), геометрию обоих CLI-команд.
+- `app-desktop/nc-export/examples/` — образцы `.igs` для тестирования в Tube Pro / Lantek / FreeCAD: `hello-surface_w40_l600.igs`, `rect-tube-box_40x20x2_L600.igs`.
+
+### Implementation notes
+- Координатная система: ось трубы — Z, профиль в XY (выровнено с `plugin-sketchup` ProfileGenerator). Единицы — мм (G-section unit flag = 2). Минимальная пользовательская точность — 0.001 мм. Approx max coord — 13000 мм (13 м реалистичный потолок длины трубы для NC).
+- Все 6 граней box'а представлены через Type 122 (включая endcaps) — единообразный writer, минимум кода. Type 128 / Type 144 подключим на следующих шагах (скругления Type 100 как directrix, endcaps с inner+outer trimming для отверстия от стенки).
+- Ориентация Type 122 directrix-ов выбрана так, чтобы нормали смотрели наружу (cross-product `dC/dt × generatrix_vector`). Не критично для visual model, но валидно для NC feature recognition.
+- Решение по языку standalone (намечалось как ADR-019): **Python**. Обоснование — research [10-iges-for-tube-nc.md](docs/knowledge-base/10-iges-for-tube-nc.md): pythonocc-core слишком тяжёл (~200 МБ бандл), Rust добавляет 3-4 недели против 1-2 на Python. Для DXF-writer'а в будущем — `ezdxf` готовая библиотека.
+- TCP/JSON приёмник от Ruby-плагина — следующий шаг (после подтверждения совместимости surface-модели с реальным CAM на стороне заказчика/разработчика).
+
+### Known limitations
+- Не BREP, не Type 144 — surface-модель без сшивки граней. Tube Pro (Friendess) и аналоги, по research, лучше работают с surface-моделями чем с Type 186 BREP, но это требует эмпирической проверки.
+- Скругления углов профиля (LOD-1 → LOD-2) ещё не поддержаны — `--no-radius` единственный режим.
+- Endcaps без отверстия от стенки — труба моделируется как «коробка», не как «полая труба».
+
 ## [v0.0.14] — 2026-04-25
 
 ### Added

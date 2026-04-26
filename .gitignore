@@ -14,6 +14,9 @@ build/
 # Python / Node (будущие компоненты)
 __pycache__/
 *.pyc
+*.egg-info/
+.venv/
+.pytest_cache/
 node_modules/
 
 # Корпус примеров: содержит PII клиентов в путях .skp/notes
@@ -22,3 +25,10 @@ corpus/examples/
 *.skp
 *.dump.json
 *.skp_dump.json
+
+# Reference IGES от заказчика для тестирования CypTube
+# (G-section может содержать пути с именами клиентов — не коммитим).
+# Игнорируем по конкретному префиксу, чтобы не зацепить свои lowercase .igs
+# (git на Windows case-insensitive и `*.IGS` поглотит и `*.igs`).
+app-desktop/nc-export/examples/60X10X992*
+app-desktop/nc-export/examples/__customer_*

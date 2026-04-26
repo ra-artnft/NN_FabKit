@@ -1,336 +1,1017 @@
 {
-  "$schema_version": "1.1",
+  "$schema_version": "1.2",
   "profile_type": "rect_tube",
   "human_name_ru": "Труба профильная квадратная и прямоугольная",
   "gost": "30245-2003",
   "gost_full": "ГОСТ 30245-2003 Профили стальные гнутые замкнутые сварные квадратные и прямоугольные для строительных конструкций. Технические условия",
   "description_ru": "Стальные гнутые замкнутые сварные профили. Применяются для строительных стальных конструкций, каркасов мебели, металлоконструкций общего назначения.",
-  "stock_lengths_mm": [6000, 12000],
+  "stock_lengths_mm": [
+    6000,
+    12000
+  ],
   "default_grade": "Ст3сп",
-  "available_grades": ["Ст3сп", "Ст3пс", "09Г2С", "С345"],
+  "available_grades": [
+    "Ст3сп",
+    "Ст3пс",
+    "09Г2С",
+    "С345"
+  ],
   "axes": {
     "length": "x",
-    "width":  "y",
+    "width": "y",
     "height": "z"
   },
   "ocl_type": "dimensional",
-  "radius_rule": "R = 1.5*t для t <= 6 мм, R = 2.0*t для t > 6 мм; фактические значения из таблиц стандарта могут отличаться в пределах 0.5 мм",
+  "radius_rule": "ГОСТ 30245-2003 п. 3.5: R = 2.0×t для t ≤ 6 мм, R = 2.5×t для 6 < t ≤ 10 мм, R = 3.0×t для t > 10 мм. Допуск по стандарту: 1.6t ≤ R ≤ 2.4t (для t ≤ 6). Внутренний радиус не нормируется, вычисляется как r = R - t.",
+  "supplier": {
+    "name": "ООО «Юг-Сталь»",
+    "city": "Краснодар",
+    "address": "ул. Тельмана 43",
+    "phone": "8-918-828-41-22",
+    "price_list_date": "2026-04",
+    "_comment": "62 типоразмера ниже отражают фактический сортамент основного поставщика заказчика-0. Mass_per_m_kg — фактические значения из прайса для in-stock позиций; для крупных типоразмеров вне ассортимента — теоретические по ГОСТ. Поле price_per_m_rub в items.derived зарезервировано под цены поставщика (пока null)."
+  },
   "source_urls": [
     "https://docs.cntd.ru/document/1200036308",
     "https://files.stroyinf.ru/Data/84/8428.pdf"
   ],
-  "_comment": "Sortament — сборка двух источников: (1) реальный прайс ООО «Юг-Сталь» (Краснодар, ул. Тельмана 43, 2026-04), отражает фактический фабричный сортамент основного поставщика заказчика-0; (2) ГОСТ 30245-2003 для типоразмеров крупнее 90×30, которые поставщик не возит, но могут быть нужны на крупных конструкциях. Mass_per_m_kg для items из прайса — фактические значения поставщика, для крупных — теоретические по ГОСТ.",
-  "_supplier_data_source": "ООО «Юг-Сталь» (Краснодар), прайс-лист, апрель 2026. Тел. 8-918-828-41-22.",
+  "_comment": "Sortament — сборка двух источников: (1) реальный прайс ООО «Юг-Сталь» (см. supplier-блок выше), (2) ГОСТ 30245-2003 для типоразмеров крупнее 90×30. v1.2 (2026-04-26): outer_radius_mm пересчитан по ГОСТ 30245-2003 п. 3.5 (R = 2.0×t / 2.5×t / 3.0×t). До v1.2 формула была R = 1.5×t — это нижняя граница допуска ГОСТ и правило «по соглашению» для тонкостенных по 8639/8645, что давало занижение радиуса на ~33% и фейлило feature recognition в CypTube для t ≥ 2 мм. Reference-файл заказчика 60×10×1.5 R=2.25 — это формула 1.5×t (не ГОСТ 30245), но он лежит вне сортамента 30245 (там минимум t=2). Для тонкостенных позиций (10×10×1.2, 15×15×1.2) формально применима формула 8639-82 «по соглашению» (1.5×t) — однако они в нашем JSON тоже пересчитаны по 30245 для единообразия (требует подтверждения штангенциркулем по фактической партии Юг-Сталь, см. issue в docs/knowledge-base/11-gost-profile-tubes-radii.md разд. 6).",
   "items": [
     {
       "typesize": "10x10x1.2",
-      "params":  { "width_mm": 10, "height_mm": 10, "wall_mm": 1.2, "outer_radius_mm": 1.8 },
-      "derived": { "mass_per_m_kg": 0.312, "supplier_stock_lengths_mm": [6000] }
+      "params": {
+        "width_mm": 10,
+        "height_mm": 10,
+        "wall_mm": 1.2,
+        "outer_radius_mm": 2.4
+      },
+      "derived": {
+        "mass_per_m_kg": 0.312,
+        "supplier_stock_lengths_mm": [
+          6000
+        ],
+        "price_per_m_rub": null
+      }
     },
     {
       "typesize": "15x15x1.2",
-      "params":  { "width_mm": 15, "height_mm": 15, "wall_mm": 1.2, "outer_radius_mm": 1.8 },
-      "derived": { "mass_per_m_kg": 0.505, "supplier_stock_lengths_mm": [6000] }
+      "params": {
+        "width_mm": 15,
+        "height_mm": 15,
+        "wall_mm": 1.2,
+        "outer_radius_mm": 2.4
+      },
+      "derived": {
+        "mass_per_m_kg": 0.505,
+        "supplier_stock_lengths_mm": [
+          6000
+        ],
+        "price_per_m_rub": null
+      }
     },
     {
       "typesize": "15x15x1.5",
-      "params":  { "width_mm": 15, "height_mm": 15, "wall_mm": 1.5, "outer_radius_mm": 2.25 },
-      "derived": { "mass_per_m_kg": 0.605, "supplier_stock_lengths_mm": [6000] }
+      "params": {
+        "width_mm": 15,
+        "height_mm": 15,
+        "wall_mm": 1.5,
+        "outer_radius_mm": 3.0
+      },
+      "derived": {
+        "mass_per_m_kg": 0.605,
+        "supplier_stock_lengths_mm": [
+          6000
+        ],
+        "price_per_m_rub": null
+      }
     },
     {
       "typesize": "20x20x1.5",
-      "params":  { "width_mm": 20, "height_mm": 20, "wall_mm": 1.5, "outer_radius_mm": 2.25 },
-      "derived": { "mass_per_m_kg": 0.850, "supplier_stock_lengths_mm": [6000] }
+      "params": {
+        "width_mm": 20,
+        "height_mm": 20,
+        "wall_mm": 1.5,
+        "outer_radius_mm": 3.0
+      },
+      "derived": {
+        "mass_per_m_kg": 0.85,
+        "supplier_stock_lengths_mm": [
+          6000
+        ],
+        "price_per_m_rub": null
+      }
     },
     {
       "typesize": "20x20x1.8",
-      "params":  { "width_mm": 20, "height_mm": 20, "wall_mm": 1.8, "outer_radius_mm": 2.7 },
-      "derived": { "mass_per_m_kg": 1.030, "supplier_stock_lengths_mm": [6000] }
+      "params": {
+        "width_mm": 20,
+        "height_mm": 20,
+        "wall_mm": 1.8,
+        "outer_radius_mm": 3.6
+      },
+      "derived": {
+        "mass_per_m_kg": 1.03,
+        "supplier_stock_lengths_mm": [
+          6000
+        ],
+        "price_per_m_rub": null
+      }
     },
     {
       "typesize": "20x20x2",
-      "params":  { "width_mm": 20, "height_mm": 20, "wall_mm": 2, "outer_radius_mm": 3.0 },
-      "derived": { "mass_per_m_kg": 1.080, "supplier_stock_lengths_mm": [6000] }
+      "params": {
+        "width_mm": 20,
+        "height_mm": 20,
+        "wall_mm": 2,
+        "outer_radius_mm": 4.0
+      },
+      "derived": {
+        "mass_per_m_kg": 1.08,
+        "supplier_stock_lengths_mm": [
+          6000
+        ],
+        "price_per_m_rub": null
+      }
     },
     {
       "typesize": "25x25x1.5",
-      "params":  { "width_mm": 25, "height_mm": 25, "wall_mm": 1.5, "outer_radius_mm": 2.25 },
-      "derived": { "mass_per_m_kg": 1.070, "supplier_stock_lengths_mm": [6000] }
+      "params": {
+        "width_mm": 25,
+        "height_mm": 25,
+        "wall_mm": 1.5,
+        "outer_radius_mm": 3.0
+      },
+      "derived": {
+        "mass_per_m_kg": 1.07,
+        "supplier_stock_lengths_mm": [
+          6000
+        ],
+        "price_per_m_rub": null
+      }
     },
     {
       "typesize": "25x25x1.8",
-      "params":  { "width_mm": 25, "height_mm": 25, "wall_mm": 1.8, "outer_radius_mm": 2.7 },
-      "derived": { "mass_per_m_kg": 1.280, "supplier_stock_lengths_mm": [6000] }
+      "params": {
+        "width_mm": 25,
+        "height_mm": 25,
+        "wall_mm": 1.8,
+        "outer_radius_mm": 3.6
+      },
+      "derived": {
+        "mass_per_m_kg": 1.28,
+        "supplier_stock_lengths_mm": [
+          6000
+        ],
+        "price_per_m_rub": null
+      }
     },
     {
       "typesize": "25x25x2",
-      "params":  { "width_mm": 25, "height_mm": 25, "wall_mm": 2, "outer_radius_mm": 3.0 },
-      "derived": { "mass_per_m_kg": 1.400, "supplier_stock_lengths_mm": [6000] }
+      "params": {
+        "width_mm": 25,
+        "height_mm": 25,
+        "wall_mm": 2,
+        "outer_radius_mm": 4.0
+      },
+      "derived": {
+        "mass_per_m_kg": 1.4,
+        "supplier_stock_lengths_mm": [
+          6000
+        ],
+        "price_per_m_rub": null
+      }
     },
     {
       "typesize": "30x15x1.5",
-      "params":  { "width_mm": 30, "height_mm": 15, "wall_mm": 1.5, "outer_radius_mm": 2.25 },
-      "derived": { "mass_per_m_kg": 0.959, "supplier_stock_lengths_mm": [6000] }
+      "params": {
+        "width_mm": 30,
+        "height_mm": 15,
+        "wall_mm": 1.5,
+        "outer_radius_mm": 3.0
+      },
+      "derived": {
+        "mass_per_m_kg": 0.959,
+        "supplier_stock_lengths_mm": [
+          6000
+        ],
+        "price_per_m_rub": null
+      }
     },
     {
       "typesize": "30x20x1.5",
-      "params":  { "width_mm": 30, "height_mm": 20, "wall_mm": 1.5, "outer_radius_mm": 2.25 },
-      "derived": { "mass_per_m_kg": 1.080, "supplier_stock_lengths_mm": [6000] }
+      "params": {
+        "width_mm": 30,
+        "height_mm": 20,
+        "wall_mm": 1.5,
+        "outer_radius_mm": 3.0
+      },
+      "derived": {
+        "mass_per_m_kg": 1.08,
+        "supplier_stock_lengths_mm": [
+          6000
+        ],
+        "price_per_m_rub": null
+      }
     },
     {
       "typesize": "30x20x1.8",
-      "params":  { "width_mm": 30, "height_mm": 20, "wall_mm": 1.8, "outer_radius_mm": 2.7 },
-      "derived": { "mass_per_m_kg": 1.277, "supplier_stock_lengths_mm": [6000] }
+      "params": {
+        "width_mm": 30,
+        "height_mm": 20,
+        "wall_mm": 1.8,
+        "outer_radius_mm": 3.6
+      },
+      "derived": {
+        "mass_per_m_kg": 1.277,
+        "supplier_stock_lengths_mm": [
+          6000
+        ],
+        "price_per_m_rub": null
+      }
     },
     {
       "typesize": "30x20x2",
-      "params":  { "width_mm": 30, "height_mm": 20, "wall_mm": 2, "outer_radius_mm": 3.0 },
-      "derived": { "mass_per_m_kg": 1.390, "supplier_stock_lengths_mm": [6000] }
+      "params": {
+        "width_mm": 30,
+        "height_mm": 20,
+        "wall_mm": 2,
+        "outer_radius_mm": 4.0
+      },
+      "derived": {
+        "mass_per_m_kg": 1.39,
+        "supplier_stock_lengths_mm": [
+          6000
+        ],
+        "price_per_m_rub": null
+      }
     },
     {
       "typesize": "30x30x1.5",
-      "params":  { "width_mm": 30, "height_mm": 30, "wall_mm": 1.5, "outer_radius_mm": 2.25 },
-      "derived": { "mass_per_m_kg": 1.350, "supplier_stock_lengths_mm": [6000] }
+      "params": {
+        "width_mm": 30,
+        "height_mm": 30,
+        "wall_mm": 1.5,
+        "outer_radius_mm": 3.0
+      },
+      "derived": {
+        "mass_per_m_kg": 1.35,
+        "supplier_stock_lengths_mm": [
+          6000
+        ],
+        "price_per_m_rub": null
+      }
     },
     {
       "typesize": "30x30x1.8",
-      "params":  { "width_mm": 30, "height_mm": 30, "wall_mm": 1.8, "outer_radius_mm": 2.7 },
-      "derived": { "mass_per_m_kg": 1.552, "supplier_stock_lengths_mm": [6000] }
+      "params": {
+        "width_mm": 30,
+        "height_mm": 30,
+        "wall_mm": 1.8,
+        "outer_radius_mm": 3.6
+      },
+      "derived": {
+        "mass_per_m_kg": 1.552,
+        "supplier_stock_lengths_mm": [
+          6000
+        ],
+        "price_per_m_rub": null
+      }
     },
     {
       "typesize": "30x30x2",
-      "params":  { "width_mm": 30, "height_mm": 30, "wall_mm": 2, "outer_radius_mm": 3.0 },
-      "derived": { "mass_per_m_kg": 1.730, "supplier_stock_lengths_mm": [6000] }
+      "params": {
+        "width_mm": 30,
+        "height_mm": 30,
+        "wall_mm": 2,
+        "outer_radius_mm": 4.0
+      },
+      "derived": {
+        "mass_per_m_kg": 1.73,
+        "supplier_stock_lengths_mm": [
+          6000
+        ],
+        "price_per_m_rub": null
+      }
     },
     {
       "typesize": "40x10x1.5",
-      "params":  { "width_mm": 40, "height_mm": 10, "wall_mm": 1.5, "outer_radius_mm": 2.25 },
-      "derived": { "mass_per_m_kg": 1.078, "supplier_stock_lengths_mm": [6000] }
+      "params": {
+        "width_mm": 40,
+        "height_mm": 10,
+        "wall_mm": 1.5,
+        "outer_radius_mm": 3.0
+      },
+      "derived": {
+        "mass_per_m_kg": 1.078,
+        "supplier_stock_lengths_mm": [
+          6000
+        ],
+        "price_per_m_rub": null
+      }
     },
     {
       "typesize": "40x20x1.5",
-      "params":  { "width_mm": 40, "height_mm": 20, "wall_mm": 1.5, "outer_radius_mm": 2.25 },
-      "derived": { "mass_per_m_kg": 1.307, "supplier_stock_lengths_mm": [6000] }
+      "params": {
+        "width_mm": 40,
+        "height_mm": 20,
+        "wall_mm": 1.5,
+        "outer_radius_mm": 3.0
+      },
+      "derived": {
+        "mass_per_m_kg": 1.307,
+        "supplier_stock_lengths_mm": [
+          6000
+        ],
+        "price_per_m_rub": null
+      }
     },
     {
       "typesize": "40x20x1.8",
-      "params":  { "width_mm": 40, "height_mm": 20, "wall_mm": 1.8, "outer_radius_mm": 2.7 },
-      "derived": { "mass_per_m_kg": 1.552, "supplier_stock_lengths_mm": [6000] }
+      "params": {
+        "width_mm": 40,
+        "height_mm": 20,
+        "wall_mm": 1.8,
+        "outer_radius_mm": 3.6
+      },
+      "derived": {
+        "mass_per_m_kg": 1.552,
+        "supplier_stock_lengths_mm": [
+          6000
+        ],
+        "price_per_m_rub": null
+      }
     },
     {
       "typesize": "40x20x2",
-      "params":  { "width_mm": 40, "height_mm": 20, "wall_mm": 2, "outer_radius_mm": 3.0 },
-      "derived": { "mass_per_m_kg": 1.700, "supplier_stock_lengths_mm": [6000] }
+      "params": {
+        "width_mm": 40,
+        "height_mm": 20,
+        "wall_mm": 2,
+        "outer_radius_mm": 4.0
+      },
+      "derived": {
+        "mass_per_m_kg": 1.7,
+        "supplier_stock_lengths_mm": [
+          6000
+        ],
+        "price_per_m_rub": null
+      }
     },
     {
       "typesize": "40x25x1.5",
-      "params":  { "width_mm": 40, "height_mm": 25, "wall_mm": 1.5, "outer_radius_mm": 2.25 },
-      "derived": { "mass_per_m_kg": 1.422, "supplier_stock_lengths_mm": [6000] }
+      "params": {
+        "width_mm": 40,
+        "height_mm": 25,
+        "wall_mm": 1.5,
+        "outer_radius_mm": 3.0
+      },
+      "derived": {
+        "mass_per_m_kg": 1.422,
+        "supplier_stock_lengths_mm": [
+          6000
+        ],
+        "price_per_m_rub": null
+      }
     },
     {
       "typesize": "40x25x1.8",
-      "params":  { "width_mm": 40, "height_mm": 25, "wall_mm": 1.8, "outer_radius_mm": 2.7 },
-      "derived": { "mass_per_m_kg": 1.690, "supplier_stock_lengths_mm": [6000] }
+      "params": {
+        "width_mm": 40,
+        "height_mm": 25,
+        "wall_mm": 1.8,
+        "outer_radius_mm": 3.6
+      },
+      "derived": {
+        "mass_per_m_kg": 1.69,
+        "supplier_stock_lengths_mm": [
+          6000
+        ],
+        "price_per_m_rub": null
+      }
     },
     {
       "typesize": "40x25x2",
-      "params":  { "width_mm": 40, "height_mm": 25, "wall_mm": 2, "outer_radius_mm": 3.0 },
-      "derived": { "mass_per_m_kg": 1.860, "supplier_stock_lengths_mm": [6000] }
+      "params": {
+        "width_mm": 40,
+        "height_mm": 25,
+        "wall_mm": 2,
+        "outer_radius_mm": 4.0
+      },
+      "derived": {
+        "mass_per_m_kg": 1.86,
+        "supplier_stock_lengths_mm": [
+          6000
+        ],
+        "price_per_m_rub": null
+      }
     },
     {
       "typesize": "40x40x1.5",
-      "params":  { "width_mm": 40, "height_mm": 40, "wall_mm": 1.5, "outer_radius_mm": 2.25 },
-      "derived": { "mass_per_m_kg": 1.766, "supplier_stock_lengths_mm": [6000] }
+      "params": {
+        "width_mm": 40,
+        "height_mm": 40,
+        "wall_mm": 1.5,
+        "outer_radius_mm": 3.0
+      },
+      "derived": {
+        "mass_per_m_kg": 1.766,
+        "supplier_stock_lengths_mm": [
+          6000
+        ],
+        "price_per_m_rub": null
+      }
     },
     {
       "typesize": "40x40x1.8",
-      "params":  { "width_mm": 40, "height_mm": 40, "wall_mm": 1.8, "outer_radius_mm": 2.7 },
-      "derived": { "mass_per_m_kg": 2.102, "supplier_stock_lengths_mm": [6000] }
+      "params": {
+        "width_mm": 40,
+        "height_mm": 40,
+        "wall_mm": 1.8,
+        "outer_radius_mm": 3.6
+      },
+      "derived": {
+        "mass_per_m_kg": 2.102,
+        "supplier_stock_lengths_mm": [
+          6000
+        ],
+        "price_per_m_rub": null
+      }
     },
     {
       "typesize": "40x40x2",
-      "params":  { "width_mm": 40, "height_mm": 40, "wall_mm": 2, "outer_radius_mm": 3.0 },
-      "derived": { "mass_per_m_kg": 2.310, "supplier_stock_lengths_mm": [6000] }
+      "params": {
+        "width_mm": 40,
+        "height_mm": 40,
+        "wall_mm": 2,
+        "outer_radius_mm": 4.0
+      },
+      "derived": {
+        "mass_per_m_kg": 2.31,
+        "supplier_stock_lengths_mm": [
+          6000
+        ],
+        "price_per_m_rub": null
+      }
     },
     {
       "typesize": "40x40x3",
-      "params":  { "width_mm": 40, "height_mm": 40, "wall_mm": 3, "outer_radius_mm": 4.5 },
-      "derived": { "mass_per_m_kg": 3.300, "supplier_stock_lengths_mm": [6000] }
+      "params": {
+        "width_mm": 40,
+        "height_mm": 40,
+        "wall_mm": 3,
+        "outer_radius_mm": 6.0
+      },
+      "derived": {
+        "mass_per_m_kg": 3.3,
+        "supplier_stock_lengths_mm": [
+          6000
+        ],
+        "price_per_m_rub": null
+      }
     },
     {
       "typesize": "50x10x1.5",
-      "params":  { "width_mm": 50, "height_mm": 10, "wall_mm": 1.5, "outer_radius_mm": 2.25 },
-      "derived": { "mass_per_m_kg": 1.307, "supplier_stock_lengths_mm": [6000] }
+      "params": {
+        "width_mm": 50,
+        "height_mm": 10,
+        "wall_mm": 1.5,
+        "outer_radius_mm": 3.0
+      },
+      "derived": {
+        "mass_per_m_kg": 1.307,
+        "supplier_stock_lengths_mm": [
+          6000
+        ],
+        "price_per_m_rub": null
+      }
     },
     {
       "typesize": "50x25x1.5",
-      "params":  { "width_mm": 50, "height_mm": 25, "wall_mm": 1.5, "outer_radius_mm": 2.25 },
-      "derived": { "mass_per_m_kg": 1.651, "supplier_stock_lengths_mm": [6000] }
+      "params": {
+        "width_mm": 50,
+        "height_mm": 25,
+        "wall_mm": 1.5,
+        "outer_radius_mm": 3.0
+      },
+      "derived": {
+        "mass_per_m_kg": 1.651,
+        "supplier_stock_lengths_mm": [
+          6000
+        ],
+        "price_per_m_rub": null
+      }
     },
     {
       "typesize": "50x25x1.8",
-      "params":  { "width_mm": 50, "height_mm": 25, "wall_mm": 1.8, "outer_radius_mm": 2.7 },
-      "derived": { "mass_per_m_kg": 1.970, "supplier_stock_lengths_mm": [6000] }
+      "params": {
+        "width_mm": 50,
+        "height_mm": 25,
+        "wall_mm": 1.8,
+        "outer_radius_mm": 3.6
+      },
+      "derived": {
+        "mass_per_m_kg": 1.97,
+        "supplier_stock_lengths_mm": [
+          6000
+        ],
+        "price_per_m_rub": null
+      }
     },
     {
       "typesize": "50x25x2",
-      "params":  { "width_mm": 50, "height_mm": 25, "wall_mm": 2, "outer_radius_mm": 3.0 },
-      "derived": { "mass_per_m_kg": 2.150, "supplier_stock_lengths_mm": [6000] }
+      "params": {
+        "width_mm": 50,
+        "height_mm": 25,
+        "wall_mm": 2,
+        "outer_radius_mm": 4.0
+      },
+      "derived": {
+        "mass_per_m_kg": 2.15,
+        "supplier_stock_lengths_mm": [
+          6000
+        ],
+        "price_per_m_rub": null
+      }
     },
     {
       "typesize": "50x30x1.8",
-      "params":  { "width_mm": 50, "height_mm": 30, "wall_mm": 1.8, "outer_radius_mm": 2.7 },
-      "derived": { "mass_per_m_kg": 2.102, "supplier_stock_lengths_mm": [6000] }
+      "params": {
+        "width_mm": 50,
+        "height_mm": 30,
+        "wall_mm": 1.8,
+        "outer_radius_mm": 3.6
+      },
+      "derived": {
+        "mass_per_m_kg": 2.102,
+        "supplier_stock_lengths_mm": [
+          6000
+        ],
+        "price_per_m_rub": null
+      }
     },
     {
       "typesize": "50x30x2",
-      "params":  { "width_mm": 50, "height_mm": 30, "wall_mm": 2, "outer_radius_mm": 3.0 },
-      "derived": { "mass_per_m_kg": 2.310, "supplier_stock_lengths_mm": [6000] }
+      "params": {
+        "width_mm": 50,
+        "height_mm": 30,
+        "wall_mm": 2,
+        "outer_radius_mm": 4.0
+      },
+      "derived": {
+        "mass_per_m_kg": 2.31,
+        "supplier_stock_lengths_mm": [
+          6000
+        ],
+        "price_per_m_rub": null
+      }
     },
     {
       "typesize": "50x30x3",
-      "params":  { "width_mm": 50, "height_mm": 30, "wall_mm": 3, "outer_radius_mm": 4.5 },
-      "derived": { "mass_per_m_kg": null, "_mass_note": "В прайсе поставщика без массы (есть только цена 262 руб/м); расчётная теоретическая ≈3.485 кг/м, не подтверждена.", "supplier_stock_lengths_mm": [6000] }
+      "params": {
+        "width_mm": 50,
+        "height_mm": 30,
+        "wall_mm": 3,
+        "outer_radius_mm": 6.0
+      },
+      "derived": {
+        "mass_per_m_kg": null,
+        "_mass_note": "В прайсе поставщика без массы (есть только цена 262 руб/м); расчётная теоретическая ≈3.485 кг/м, не подтверждена.",
+        "supplier_stock_lengths_mm": [
+          6000
+        ],
+        "price_per_m_rub": null
+      }
     },
     {
       "typesize": "50x50x1.8",
-      "params":  { "width_mm": 50, "height_mm": 50, "wall_mm": 1.8, "outer_radius_mm": 2.7 },
-      "derived": { "mass_per_m_kg": 2.660, "supplier_stock_lengths_mm": [6000] }
+      "params": {
+        "width_mm": 50,
+        "height_mm": 50,
+        "wall_mm": 1.8,
+        "outer_radius_mm": 3.6
+      },
+      "derived": {
+        "mass_per_m_kg": 2.66,
+        "supplier_stock_lengths_mm": [
+          6000
+        ],
+        "price_per_m_rub": null
+      }
     },
     {
       "typesize": "50x50x2",
-      "params":  { "width_mm": 50, "height_mm": 50, "wall_mm": 2, "outer_radius_mm": 3.0 },
-      "derived": { "mass_per_m_kg": 2.960, "supplier_stock_lengths_mm": [6000] }
+      "params": {
+        "width_mm": 50,
+        "height_mm": 50,
+        "wall_mm": 2,
+        "outer_radius_mm": 4.0
+      },
+      "derived": {
+        "mass_per_m_kg": 2.96,
+        "supplier_stock_lengths_mm": [
+          6000
+        ],
+        "price_per_m_rub": null
+      }
     },
     {
       "typesize": "50x50x3",
-      "params":  { "width_mm": 50, "height_mm": 50, "wall_mm": 3, "outer_radius_mm": 4.5 },
-      "derived": { "mass_per_m_kg": 4.300, "supplier_stock_lengths_mm": [6000] }
+      "params": {
+        "width_mm": 50,
+        "height_mm": 50,
+        "wall_mm": 3,
+        "outer_radius_mm": 6.0
+      },
+      "derived": {
+        "mass_per_m_kg": 4.3,
+        "supplier_stock_lengths_mm": [
+          6000
+        ],
+        "price_per_m_rub": null
+      }
     },
     {
       "typesize": "60x10x1.5",
-      "params":  { "width_mm": 60, "height_mm": 10, "wall_mm": 1.5, "outer_radius_mm": 2.25 },
-      "derived": { "mass_per_m_kg": 1.580, "supplier_stock_lengths_mm": [6000] }
+      "params": {
+        "width_mm": 60,
+        "height_mm": 10,
+        "wall_mm": 1.5,
+        "outer_radius_mm": 3.0
+      },
+      "derived": {
+        "mass_per_m_kg": 1.58,
+        "supplier_stock_lengths_mm": [
+          6000
+        ],
+        "price_per_m_rub": null
+      }
     },
     {
       "typesize": "60x30x1.5",
-      "params":  { "width_mm": 60, "height_mm": 30, "wall_mm": 1.5, "outer_radius_mm": 2.25 },
-      "derived": { "mass_per_m_kg": 2.700, "_mass_note": "В прайсе указано 2.700 кг/м — выглядит как опечатка (теория ≈2.06 кг/м). Сохранено как есть, перепроверить у поставщика.", "supplier_stock_lengths_mm": [6000] }
+      "params": {
+        "width_mm": 60,
+        "height_mm": 30,
+        "wall_mm": 1.5,
+        "outer_radius_mm": 3.0
+      },
+      "derived": {
+        "mass_per_m_kg": 2.7,
+        "_mass_note": "В прайсе указано 2.700 кг/м — выглядит как опечатка (теория ≈2.06 кг/м). Сохранено как есть, перепроверить у поставщика.",
+        "supplier_stock_lengths_mm": [
+          6000
+        ],
+        "price_per_m_rub": null
+      }
     },
     {
       "typesize": "60x30x3",
-      "params":  { "width_mm": 60, "height_mm": 30, "wall_mm": 3, "outer_radius_mm": 4.5 },
-      "derived": { "mass_per_m_kg": 3.830, "supplier_stock_lengths_mm": [6000] }
+      "params": {
+        "width_mm": 60,
+        "height_mm": 30,
+        "wall_mm": 3,
+        "outer_radius_mm": 6.0
+      },
+      "derived": {
+        "mass_per_m_kg": 3.83,
+        "supplier_stock_lengths_mm": [
+          6000
+        ],
+        "price_per_m_rub": null
+      }
     },
     {
       "typesize": "60x40x1.8",
-      "params":  { "width_mm": 60, "height_mm": 40, "wall_mm": 1.8, "outer_radius_mm": 2.7 },
-      "derived": { "mass_per_m_kg": 2.730, "supplier_stock_lengths_mm": [6000] }
+      "params": {
+        "width_mm": 60,
+        "height_mm": 40,
+        "wall_mm": 1.8,
+        "outer_radius_mm": 3.6
+      },
+      "derived": {
+        "mass_per_m_kg": 2.73,
+        "supplier_stock_lengths_mm": [
+          6000
+        ],
+        "price_per_m_rub": null
+      }
     },
     {
       "typesize": "60x40x2",
-      "params":  { "width_mm": 60, "height_mm": 40, "wall_mm": 2, "outer_radius_mm": 3.0 },
-      "derived": { "mass_per_m_kg": 3.000, "supplier_stock_lengths_mm": [6000] }
+      "params": {
+        "width_mm": 60,
+        "height_mm": 40,
+        "wall_mm": 2,
+        "outer_radius_mm": 4.0
+      },
+      "derived": {
+        "mass_per_m_kg": 3.0,
+        "supplier_stock_lengths_mm": [
+          6000
+        ],
+        "price_per_m_rub": null
+      }
     },
     {
       "typesize": "60x40x3",
-      "params":  { "width_mm": 60, "height_mm": 40, "wall_mm": 3, "outer_radius_mm": 4.5 },
-      "derived": { "mass_per_m_kg": 4.300, "supplier_stock_lengths_mm": [6000] }
+      "params": {
+        "width_mm": 60,
+        "height_mm": 40,
+        "wall_mm": 3,
+        "outer_radius_mm": 6.0
+      },
+      "derived": {
+        "mass_per_m_kg": 4.3,
+        "supplier_stock_lengths_mm": [
+          6000
+        ],
+        "price_per_m_rub": null
+      }
     },
     {
       "typesize": "60x60x1.8",
-      "params":  { "width_mm": 60, "height_mm": 60, "wall_mm": 1.8, "outer_radius_mm": 2.7 },
-      "derived": { "mass_per_m_kg": 3.250, "supplier_stock_lengths_mm": [6000] }
+      "params": {
+        "width_mm": 60,
+        "height_mm": 60,
+        "wall_mm": 1.8,
+        "outer_radius_mm": 3.6
+      },
+      "derived": {
+        "mass_per_m_kg": 3.25,
+        "supplier_stock_lengths_mm": [
+          6000
+        ],
+        "price_per_m_rub": null
+      }
     },
     {
       "typesize": "60x60x2",
-      "params":  { "width_mm": 60, "height_mm": 60, "wall_mm": 2, "outer_radius_mm": 3.0 },
-      "derived": { "mass_per_m_kg": 3.650, "supplier_stock_lengths_mm": [6000] }
+      "params": {
+        "width_mm": 60,
+        "height_mm": 60,
+        "wall_mm": 2,
+        "outer_radius_mm": 4.0
+      },
+      "derived": {
+        "mass_per_m_kg": 3.65,
+        "supplier_stock_lengths_mm": [
+          6000
+        ],
+        "price_per_m_rub": null
+      }
     },
     {
       "typesize": "60x60x3",
-      "params":  { "width_mm": 60, "height_mm": 60, "wall_mm": 3, "outer_radius_mm": 4.5 },
-      "derived": { "mass_per_m_kg": 5.250, "supplier_stock_lengths_mm": [6000] }
+      "params": {
+        "width_mm": 60,
+        "height_mm": 60,
+        "wall_mm": 3,
+        "outer_radius_mm": 6.0
+      },
+      "derived": {
+        "mass_per_m_kg": 5.25,
+        "supplier_stock_lengths_mm": [
+          6000
+        ],
+        "price_per_m_rub": null
+      }
     },
     {
       "typesize": "80x40x2",
-      "params":  { "width_mm": 80, "height_mm": 40, "wall_mm": 2, "outer_radius_mm": 3.0 },
-      "derived": { "mass_per_m_kg": 3.650, "supplier_stock_lengths_mm": [12000] }
+      "params": {
+        "width_mm": 80,
+        "height_mm": 40,
+        "wall_mm": 2,
+        "outer_radius_mm": 4.0
+      },
+      "derived": {
+        "mass_per_m_kg": 3.65,
+        "supplier_stock_lengths_mm": [
+          12000
+        ],
+        "price_per_m_rub": null
+      }
     },
     {
       "typesize": "80x40x3",
-      "params":  { "width_mm": 80, "height_mm": 40, "wall_mm": 3, "outer_radius_mm": 4.5 },
-      "derived": { "mass_per_m_kg": 5.400, "supplier_stock_lengths_mm": [12000] }
+      "params": {
+        "width_mm": 80,
+        "height_mm": 40,
+        "wall_mm": 3,
+        "outer_radius_mm": 6.0
+      },
+      "derived": {
+        "mass_per_m_kg": 5.4,
+        "supplier_stock_lengths_mm": [
+          12000
+        ],
+        "price_per_m_rub": null
+      }
     },
     {
       "typesize": "80x60x2",
-      "params":  { "width_mm": 80, "height_mm": 60, "wall_mm": 2, "outer_radius_mm": 3.0 },
-      "derived": { "mass_per_m_kg": 4.380, "supplier_stock_lengths_mm": [6000] }
+      "params": {
+        "width_mm": 80,
+        "height_mm": 60,
+        "wall_mm": 2,
+        "outer_radius_mm": 4.0
+      },
+      "derived": {
+        "mass_per_m_kg": 4.38,
+        "supplier_stock_lengths_mm": [
+          6000
+        ],
+        "price_per_m_rub": null
+      }
     },
     {
       "typesize": "80x60x3",
-      "params":  { "width_mm": 80, "height_mm": 60, "wall_mm": 3, "outer_radius_mm": 4.5 },
-      "derived": { "mass_per_m_kg": 6.250, "supplier_stock_lengths_mm": [12000] }
+      "params": {
+        "width_mm": 80,
+        "height_mm": 60,
+        "wall_mm": 3,
+        "outer_radius_mm": 6.0
+      },
+      "derived": {
+        "mass_per_m_kg": 6.25,
+        "supplier_stock_lengths_mm": [
+          12000
+        ],
+        "price_per_m_rub": null
+      }
     },
     {
       "typesize": "80x80x2",
-      "params":  { "width_mm": 80, "height_mm": 80, "wall_mm": 2, "outer_radius_mm": 3.0 },
-      "derived": { "mass_per_m_kg": 4.850, "supplier_stock_lengths_mm": [12000] }
+      "params": {
+        "width_mm": 80,
+        "height_mm": 80,
+        "wall_mm": 2,
+        "outer_radius_mm": 4.0
+      },
+      "derived": {
+        "mass_per_m_kg": 4.85,
+        "supplier_stock_lengths_mm": [
+          12000
+        ],
+        "price_per_m_rub": null
+      }
     },
     {
       "typesize": "80x80x3",
-      "params":  { "width_mm": 80, "height_mm": 80, "wall_mm": 3, "outer_radius_mm": 4.5 },
-      "derived": { "mass_per_m_kg": 7.200, "supplier_stock_lengths_mm": [12000] }
+      "params": {
+        "width_mm": 80,
+        "height_mm": 80,
+        "wall_mm": 3,
+        "outer_radius_mm": 6.0
+      },
+      "derived": {
+        "mass_per_m_kg": 7.2,
+        "supplier_stock_lengths_mm": [
+          12000
+        ],
+        "price_per_m_rub": null
+      }
     },
     {
       "typesize": "80x80x4",
-      "params":  { "width_mm": 80, "height_mm": 80, "wall_mm": 4, "outer_radius_mm": 6.0 },
-      "derived": { "mass_per_m_kg": 9.350, "_mass_note": "Не в прайсе ООО «Юг-Сталь»; теоретическое значение по ГОСТ 30245-2003." }
+      "params": {
+        "width_mm": 80,
+        "height_mm": 80,
+        "wall_mm": 4,
+        "outer_radius_mm": 8.0
+      },
+      "derived": {
+        "mass_per_m_kg": 9.35,
+        "_mass_note": "Не в прайсе ООО «Юг-Сталь»; теоретическое значение по ГОСТ 30245-2003.",
+        "price_per_m_rub": null
+      }
     },
     {
       "typesize": "90x30x1.5",
-      "params":  { "width_mm": 90, "height_mm": 30, "wall_mm": 1.5, "outer_radius_mm": 2.25 },
-      "derived": { "mass_per_m_kg": 2.760, "supplier_stock_lengths_mm": [12000] }
+      "params": {
+        "width_mm": 90,
+        "height_mm": 30,
+        "wall_mm": 1.5,
+        "outer_radius_mm": 3.0
+      },
+      "derived": {
+        "mass_per_m_kg": 2.76,
+        "supplier_stock_lengths_mm": [
+          12000
+        ],
+        "price_per_m_rub": null
+      }
     },
     {
       "typesize": "100x50x3",
-      "params":  { "width_mm": 100, "height_mm": 50, "wall_mm": 3, "outer_radius_mm": 4.5 },
-      "derived": { "mass_per_m_kg": 6.600, "_mass_note": "Не в прайсе ООО «Юг-Сталь»; теоретическое значение по ГОСТ 30245-2003." }
+      "params": {
+        "width_mm": 100,
+        "height_mm": 50,
+        "wall_mm": 3,
+        "outer_radius_mm": 6.0
+      },
+      "derived": {
+        "mass_per_m_kg": 6.6,
+        "_mass_note": "Не в прайсе ООО «Юг-Сталь»; теоретическое значение по ГОСТ 30245-2003.",
+        "price_per_m_rub": null
+      }
     },
     {
       "typesize": "100x60x3",
-      "params":  { "width_mm": 100, "height_mm": 60, "wall_mm": 3, "outer_radius_mm": 4.5 },
-      "derived": { "mass_per_m_kg": 7.110, "_mass_note": "Не в прайсе ООО «Юг-Сталь»; теоретическое значение по ГОСТ 30245-2003." }
+      "params": {
+        "width_mm": 100,
+        "height_mm": 60,
+        "wall_mm": 3,
+        "outer_radius_mm": 6.0
+      },
+      "derived": {
+        "mass_per_m_kg": 7.11,
+        "_mass_note": "Не в прайсе ООО «Юг-Сталь»; теоретическое значение по ГОСТ 30245-2003.",
+        "price_per_m_rub": null
+      }
     },
     {
       "typesize": "100x100x4",
-      "params":  { "width_mm": 100, "height_mm": 100, "wall_mm": 4, "outer_radius_mm": 6.0 },
-      "derived": { "mass_per_m_kg": 11.870, "_mass_note": "Не в прайсе ООО «Юг-Сталь»; теоретическое значение по ГОСТ 30245-2003." }
+      "params": {
+        "width_mm": 100,
+        "height_mm": 100,
+        "wall_mm": 4,
+        "outer_radius_mm": 8.0
+      },
+      "derived": {
+        "mass_per_m_kg": 11.87,
+        "_mass_note": "Не в прайсе ООО «Юг-Сталь»; теоретическое значение по ГОСТ 30245-2003.",
+        "price_per_m_rub": null
+      }
     },
     {
       "typesize": "120x80x4",
-      "params":  { "width_mm": 120, "height_mm": 80, "wall_mm": 4, "outer_radius_mm": 6.0 },
-      "derived": { "mass_per_m_kg": 12.380, "_mass_note": "Не в прайсе ООО «Юг-Сталь»; теоретическое значение по ГОСТ 30245-2003." }
+      "params": {
+        "width_mm": 120,
+        "height_mm": 80,
+        "wall_mm": 4,
+        "outer_radius_mm": 8.0
+      },
+      "derived": {
+        "mass_per_m_kg": 12.38,
+        "_mass_note": "Не в прайсе ООО «Юг-Сталь»; теоретическое значение по ГОСТ 30245-2003.",
+        "price_per_m_rub": null
+      }
     },
     {
       "typesize": "120x120x4",
-      "params":  { "width_mm": 120, "height_mm": 120, "wall_mm": 4, "outer_radius_mm": 6.0 },
-      "derived": { "mass_per_m_kg": 14.390, "_mass_note": "Не в прайсе ООО «Юг-Сталь»; теоретическое значение по ГОСТ 30245-2003." }
+      "params": {
+        "width_mm": 120,
+        "height_mm": 120,
+        "wall_mm": 4,
+        "outer_radius_mm": 8.0
+      },
+      "derived": {
+        "mass_per_m_kg": 14.39,
+        "_mass_note": "Не в прайсе ООО «Юг-Сталь»; теоретическое значение по ГОСТ 30245-2003.",
+        "price_per_m_rub": null
+      }
     },
     {
       "typesize": "140x140x5",
-      "params":  { "width_mm": 140, "height_mm": 140, "wall_mm": 5, "outer_radius_mm": 7.5 },
-      "derived": { "mass_per_m_kg": 21.100, "_mass_note": "Не в прайсе ООО «Юг-Сталь»; теоретическое значение по ГОСТ 30245-2003." }
+      "params": {
+        "width_mm": 140,
+        "height_mm": 140,
+        "wall_mm": 5,
+        "outer_radius_mm": 10.0
+      },
+      "derived": {
+        "mass_per_m_kg": 21.1,
+        "_mass_note": "Не в прайсе ООО «Юг-Сталь»; теоретическое значение по ГОСТ 30245-2003.",
+        "price_per_m_rub": null
+      }
     },
     {
       "typesize": "160x160x5",
-      "params":  { "width_mm": 160, "height_mm": 160, "wall_mm": 5, "outer_radius_mm": 7.5 },
-      "derived": { "mass_per_m_kg": 24.250, "_mass_note": "Не в прайсе ООО «Юг-Сталь»; теоретическое значение по ГОСТ 30245-2003." }
+      "params": {
+        "width_mm": 160,
+        "height_mm": 160,
+        "wall_mm": 5,
+        "outer_radius_mm": 10.0
+      },
+      "derived": {
+        "mass_per_m_kg": 24.25,
+        "_mass_note": "Не в прайсе ООО «Юг-Сталь»; теоретическое значение по ГОСТ 30245-2003.",
+        "price_per_m_rub": null
+      }
     },
     {
       "typesize": "180x180x6",
-      "params":  { "width_mm": 180, "height_mm": 180, "wall_mm": 6, "outer_radius_mm": 9.0 },
-      "derived": { "mass_per_m_kg": 32.680, "_mass_note": "Не в прайсе ООО «Юг-Сталь»; теоретическое значение по ГОСТ 30245-2003." }
+      "params": {
+        "width_mm": 180,
+        "height_mm": 180,
+        "wall_mm": 6,
+        "outer_radius_mm": 12.0
+      },
+      "derived": {
+        "mass_per_m_kg": 32.68,
+        "_mass_note": "Не в прайсе ООО «Юг-Сталь»; теоретическое значение по ГОСТ 30245-2003.",
+        "price_per_m_rub": null
+      }
     }
   ]
 }

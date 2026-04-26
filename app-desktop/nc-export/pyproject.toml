@@ -1,0 +1,30 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "nn-fabkit-nc-export"
+version = "0.2.0"
+description = "NN FabKit NC-export — standalone IGES/DXF writer для CNC трубопрофилерезов и листовых станков (ADR-017)."
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "Proprietary" }
+authors = [
+  { name = "NN FabKit" }
+]
+dependencies = []
+
+[project.optional-dependencies]
+dev = [
+  "pytest>=7.0",
+]
+
+[project.scripts]
+nn-fabkit-nc-export = "nn_fabkit_nc_export.cli:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/nn_fabkit_nc_export"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-ra -q"
