@@ -25,12 +25,15 @@ module NN
     Sketchup.require "nn_fabkit/mcp/server"
     Sketchup.require "nn_fabkit/commands/mcp_control"
 
-    # UI — постоянная панель Inspector (HtmlDialog) и меню.
+    # UI — постоянная панель Inspector (HtmlDialog), toolbar-кнопка
+    # в верхней workspace area, меню.
     Sketchup.require "nn_fabkit/ui/inspector"
+    Sketchup.require "nn_fabkit/ui/toolbar"
     Sketchup.require "nn_fabkit/ui/menu"
 
     unless file_loaded?(__FILE__)
       NN::FabKit::UI::Menu.register!
+      NN::FabKit::UI::Toolbar.register!
       file_loaded(__FILE__)
     end
   end

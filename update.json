@@ -1,5 +1,5 @@
 {
-  "latest_version": "0.8.0",
-  "rbz_url": "https://github.com/ra-artnft/NN_FabKit/releases/download/v0.8.0/nn_fabkit-0.8.0.rbz",
-  "release_notes": "v0.8.0 — Inspector: top tabs Metal FAB / Дерево FAB + категоризация трубы.\n\nДобавлено: top-level переключатель Metal FAB / Дерево FAB (вторая — заглушка под мебельную ветку, появится позже). В Metal FAB — chip с поставщиком (ООО «Юг-Сталь» · Краснодар, читается из supplier-поля JSON-каталога), секция «Профильная труба» с тремя subgroup-фильтрами: Все (62) / Квадратные (30) / Прямоугольные (32) — поверх существующего поиска по типоразмеру.\n\nТочка входа: Extensions → NN FabKit → Открыть Inspector. Auto-update через Проверить обновления."
+  "latest_version": "0.9.0",
+  "rbz_url": "https://github.com/ra-artnft/NN_FabKit/releases/download/v0.9.0/nn_fabkit-0.9.0.rbz",
+  "release_notes": "v0.9.0 — Toolbar-кнопка «NN FabKit» в верхней workspace area SU.\n\nДобавлено: одна кнопка-иконка (rect tube cross-section, SVG) в собственном toolbar «NN FabKit» рядом с другими плагинами (как OCL). При первой загрузке после установки toolbar показывается автоматически (TB_NEVER_SHOWN → show), при последующих сессиях — restore (уважает выбор пользователя).\n\nКлик по кнопке → Inspector открывается / brings to front. Native X в заголовке Inspector закрывает диалог, но toolbar-кнопка остаётся стационарно сверху — это разные UI-сущности. Чтобы убрать toolbar — View → Toolbars → NN FabKit (uncheck). Validation proc подсвечивает кнопку (MF_CHECKED) пока Inspector открыт."
 }

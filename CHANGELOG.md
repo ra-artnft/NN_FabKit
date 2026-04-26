@@ -2,6 +2,23 @@
 
 Формат — по [Keep a Changelog](https://keepachangelog.com/ru/1.1.0/). Версии монорепо независимы от версии плагина; версия плагина живёт в `plugin-sketchup/src/nn_fabkit/version.rb`.
 
+## [v0.0.23] — 2026-04-26
+
+### Added (UI::Toolbar button)
+- **Плагин 0.8.0 → 0.9.0** — toolbar «NN FabKit» с одной кнопкой-иконкой Inspector в верхней workspace area SU (рядом с другими плагинами, как OCL по референсу заказчика-0).
+- Клик по кнопке → `Inspector.show` (открывает или brings to front).
+- Native X в заголовке Inspector закрывает только диалог; toolbar-кнопка остаётся стационарно — `UI::Toolbar` и `UI::HtmlDialog` независимы.
+- Auto-show при первой загрузке после установки (`TB_NEVER_SHOWN → tb.show`); при последующих сессиях `tb.restore` уважает выбор пользователя. Чтобы убрать toolbar — `View → Toolbars → NN FabKit` (uncheck).
+- Validation proc подсвечивает кнопку (MF_CHECKED) пока Inspector visible — visual press-state.
+- Иконка 24×24 SVG: профиль трубы (outer rounded rect + inner cavity), `stroke="#1a1a1a"` для светлой темы SU; в SU dark mode рендерится через инверсию colorize.
+
+### New files
+- `plugin-sketchup/src/nn_fabkit/ui/icons/inspector.svg`
+- `plugin-sketchup/src/nn_fabkit/ui/toolbar.rb`
+
+### Modified
+- `plugin-sketchup/src/nn_fabkit/main.rb` — `Sketchup.require "nn_fabkit/ui/toolbar"` + `Toolbar.register!` в `unless file_loaded?` блоке.
+
 ## [v0.0.22] — 2026-04-26
 
 ### Added (Inspector tabs + supplier + subgroups)
