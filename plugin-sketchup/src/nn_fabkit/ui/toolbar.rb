@@ -3,14 +3,15 @@
 module NN
   module FabKit
     module UI
-      # NN FabKit toolbar — одна кнопка «Inspector» в верхней workspace
-      # area SU. v0.10.2: переименован из «NN FabKit» → «NN FabKit Tools»
-      # чтобы flush'нуть кэшированный «sticky floating» state в SU registry,
-      # который оставался от broken v0.9.0 SVG-попытки.
+      # NN FabKit toolbar — две кнопки в верхней workspace area SU.
+      # v0.10.3: добавлена вторая кнопка «Создать трубу» — toolbar
+      # становится шире, drag handle area крупнее, dock-detection в SU 2025
+      # работает (single-button toolbar имел слишком тонкий drag handle).
+      #
+      # Кнопки:
+      #   1. Inspector — открыть боковую панель.
+      #   2. Создать трубу — UI.inputbox flow (CreateRectTube.call).
       module Toolbar
-        # NB: имя сменено в v0.10.2. Если оставить «NN FabKit», SU 2025
-        # помнит floating-position из v0.9.0 и не позволяет dock'нуть.
-        # Новое имя = свежий entry в HKCU\Software\SketchUp\...\Toolbars.
         TOOLBAR_NAME = "NN FabKit Tools".freeze
         LOG_PREFIX = "[NN::FabKit::UI::Toolbar]".freeze
 
@@ -19,29 +20,15 @@ module NN
             return if @toolbar
             puts "#{LOG_PREFIX} register! called (name=#{TOOLBAR_NAME})"
 
-            cmd = ::UI::Command.new("NN FabKit Inspector") { Inspector.show }
-            cmd.tooltip         = "NN FabKit — открыть Inspector"
-            cmd.menu_text       = "Inspector"
-            cmd.status_bar_text = "NN FabKit Inspector — боковая панель плагина"
-
-            icons_dir = File.join(__dir__, "icons")
-            small = File.join(icons_dir, "inspector-16.png")
-            large = File.join(icons_dir, "inspector-24.png")
-            puts "#{LOG_PREFIX} icons exist: small=#{File.exist?(small)} large=#{File.exist?(large)}"
-            cmd.small_icon = small
-            cmd.large_icon = large
-
             tb = ::UI::Toolbar.new(TOOLBAR_NAME)
-            tb.add_item(cmd)
+            tb.add_item(build_inspector_command)
+            tb.add_item(build_create_tube_command)
             puts "#{LOG_PREFIX} toolbar created, item count=#{tb.count}"
 
             state = tb.get_last_state
             puts "#{LOG_PREFIX} get_last_state=#{state} " \
                  "(NEVER=#{TB_NEVER_SHOWN} HIDDEN=#{TB_HIDDEN} VISIBLE=#{TB_VISIBLE})"
 
-            # Deferred show через 0.5s — даём SU UI fully settle перед
-            # созданием toolbar window. Иначе на некоторых системах SU 2025
-            # рендерит toolbar в «полу-broken» state без drag-to-dock.
             ::UI.start_timer(0.5, false) do
               begin
                 if state == TB_NEVER_SHOWN
@@ -59,6 +46,40 @@ module NN
 
             @toolbar = tb
             puts "#{LOG_PREFIX} register! complete"
+          end
+
+          private
+
+          def build_inspector_command
+            cmd = ::UI::Command.new("NN FabKit Inspector") { Inspector.show }
+            cmd.tooltip         = "NN FabKit — открыть Inspector"
+            cmd.menu_text       = "Inspector"
+            cmd.status_bar_text = "NN FabKit Inspector — боковая панель плагина"
+            small, large = icon_paths("inspector")
+            cmd.small_icon = small
+            cmd.large_icon = large
+            cmd
+          end
+
+          def build_create_tube_command
+            cmd = ::UI::Command.new("NN FabKit — Создать трубу") {
+              NN::MetalFab::Commands::CreateRectTube.call
+            }
+            cmd.tooltip         = "Создать «Профильная труба» из каталога"
+            cmd.menu_text       = "Создать трубу"
+            cmd.status_bar_text = "Создать DC «Профильная труба» по типоразмеру из ГОСТ-каталога"
+            small, large = icon_paths("create-tube")
+            cmd.small_icon = small
+            cmd.large_icon = large
+            cmd
+          end
+
+          def icon_paths(name)
+            dir = File.join(__dir__, "icons")
+            small = File.join(dir, "#{name}-16.png")
+            large = File.join(dir, "#{name}-24.png")
+            puts "#{LOG_PREFIX} icons #{name}: small=#{File.exist?(small)} large=#{File.exist?(large)}"
+            [small, large]
           end
         end
       end

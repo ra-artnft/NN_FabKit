@@ -1,5 +1,5 @@
 {
-  "latest_version": "0.10.2",
-  "rbz_url": "https://github.com/ra-artnft/NN_FabKit/releases/download/v0.10.2/nn_fabkit-0.10.2.rbz",
-  "release_notes": "v0.10.2 — Diagnostic build: debug logs + toolbar rename + force-check menu.\n\n1. Toolbar переименован «NN FabKit» → «NN FabKit Tools» — flush'нет кэшированный sticky-floating state в SU registry от broken v0.9.0 SVG-попытки.\n2. Toolbar.show вызывается deferred через UI.start_timer(0.5) — даёт SU UI fully settle перед отрисовкой.\n3. Verbose puts logs в Ruby Console на каждом шаге toolbar.register! и check_update flow.\n4. Новый пункт меню «Test: фоновая проверка (без задержки)» — синхронный вызов update-check без UI.start_timer, для тестирования popup-логики мимо timer'а.\n\nЕсли v0.10.0 popup auto-update не сработал — открой Window → Ruby Console и вызови меню Extensions → NN FabKit → Test: фоновая проверка. Логи покажут что происходит."
+  "latest_version": "0.10.3",
+  "rbz_url": "https://github.com/ra-artnft/NN_FabKit/releases/download/v0.10.3/nn_fabkit-0.10.3.rbz",
+  "release_notes": "v0.10.3 — Toolbar dock fix: вторая кнопка «Создать трубу».\n\nГипотеза: в SU 2025 single-button toolbar имеет слишком тонкий drag handle (узкая полоска поверх floating-окошка), drag-to-dock detection не срабатывает. Все docked плагины-toolbar'ы (OCL и др.) имеют 2-4+ кнопки — у них handle area больше.\n\nДобавлена вторая кнопка «Создать трубу» в toolbar — вызывает существующий CreateRectTube.call с UI.inputbox flow (выбор типоразмера + марки + длины из каталога). Toolbar теперь шире → drag handle больше → SU должен распознать drag-to-dock как у OCL.\n\nЕсли всё равно не докается — пришли скриншот floating-toolbar'а в новом виде + Ruby Console output."
 }
