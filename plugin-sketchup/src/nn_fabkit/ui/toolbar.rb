@@ -4,49 +4,61 @@ module NN
   module FabKit
     module UI
       # NN FabKit toolbar — одна кнопка «Inspector» в верхней workspace
-      # area SU. Стационарная: закрытие диалога Inspector (X в заголовке)
-      # НЕ скрывает кнопку. Чтобы убрать из workspace — пользователь сам:
-      # `View → Toolbars → NN FabKit` (uncheck) или правый клик по
-      # toolbar area → uncheck.
-      #
-      # Auto-show при первой загрузке после установки (TB_NEVER_SHOWN);
-      # при последующих сессиях — restore (уважает выбор пользователя).
+      # area SU. v0.10.2: переименован из «NN FabKit» → «NN FabKit Tools»
+      # чтобы flush'нуть кэшированный «sticky floating» state в SU registry,
+      # который оставался от broken v0.9.0 SVG-попытки.
       module Toolbar
-        TOOLBAR_NAME = "NN FabKit".freeze
+        # NB: имя сменено в v0.10.2. Если оставить «NN FabKit», SU 2025
+        # помнит floating-position из v0.9.0 и не позволяет dock'нуть.
+        # Новое имя = свежий entry в HKCU\Software\SketchUp\...\Toolbars.
+        TOOLBAR_NAME = "NN FabKit Tools".freeze
+        LOG_PREFIX = "[NN::FabKit::UI::Toolbar]".freeze
 
         class << self
           def register!
-            return if @toolbar  # idempotent
+            return if @toolbar
+            puts "#{LOG_PREFIX} register! called (name=#{TOOLBAR_NAME})"
 
             cmd = ::UI::Command.new("NN FabKit Inspector") { Inspector.show }
             cmd.tooltip         = "NN FabKit — открыть Inspector"
             cmd.menu_text       = "Inspector"
             cmd.status_bar_text = "NN FabKit Inspector — боковая панель плагина"
 
-            # Используем PNG, а не SVG: SVG в SU 2025 рендерится непредсказуемо
-            # на toolbar buttons (icon вроде показывается, но drag-to-dock не
-            # работает — toolbar остаётся floating даже после ручного перетаскивания
-            # в верхнюю workspace area). PNG-fallback гарантирует стандартное
-            # поведение docking как у других плагинов (OCL и др.).
             icons_dir = File.join(__dir__, "icons")
-            cmd.small_icon = File.join(icons_dir, "inspector-16.png")
-            cmd.large_icon = File.join(icons_dir, "inspector-24.png")
+            small = File.join(icons_dir, "inspector-16.png")
+            large = File.join(icons_dir, "inspector-24.png")
+            puts "#{LOG_PREFIX} icons exist: small=#{File.exist?(small)} large=#{File.exist?(large)}"
+            cmd.small_icon = small
+            cmd.large_icon = large
 
             tb = ::UI::Toolbar.new(TOOLBAR_NAME)
             tb.add_item(cmd)
+            puts "#{LOG_PREFIX} toolbar created, item count=#{tb.count}"
 
-            # Поведение по first-install vs subsequent:
-            #   TB_NEVER_SHOWN — первый раз после установки; show в default
-            #     position (для большинства плагинов = top, для нас тоже).
-            #   Иначе — restore last state (visibility + dock position).
-            case tb.get_last_state
-            when TB_NEVER_SHOWN
-              tb.show
-            else
-              tb.restore
+            state = tb.get_last_state
+            puts "#{LOG_PREFIX} get_last_state=#{state} " \
+                 "(NEVER=#{TB_NEVER_SHOWN} HIDDEN=#{TB_HIDDEN} VISIBLE=#{TB_VISIBLE})"
+
+            # Deferred show через 0.5s — даём SU UI fully settle перед
+            # созданием toolbar window. Иначе на некоторых системах SU 2025
+            # рендерит toolbar в «полу-broken» state без drag-to-dock.
+            ::UI.start_timer(0.5, false) do
+              begin
+                if state == TB_NEVER_SHOWN
+                  puts "#{LOG_PREFIX} TB_NEVER_SHOWN → tb.show"
+                  tb.show
+                else
+                  puts "#{LOG_PREFIX} not first time → tb.restore"
+                  tb.restore
+                end
+                puts "#{LOG_PREFIX} after show/restore: visible=#{tb.visible?}"
+              rescue StandardError => e
+                puts "#{LOG_PREFIX} ERROR in timer: #{e.class}: #{e.message}"
+              end
             end
 
             @toolbar = tb
+            puts "#{LOG_PREFIX} register! complete"
           end
         end
       end

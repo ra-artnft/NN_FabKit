@@ -30,6 +30,7 @@ module NN
           parent.add_separator
           parent.add_item("Проверить обновления…")                  { check_update }
           parent.add_item("Сменить URL обновлений…")                { change_update_url }
+          parent.add_item("Test: фоновая проверка (без задержки)")  { force_check_update }
           parent.add_separator
           parent.add_item("О плагине…")                             { show_about }
         end
@@ -70,6 +71,10 @@ module NN
 
         def self.change_update_url
           NN::FabKit::Commands::CheckUpdate.change_url
+        end
+
+        def self.force_check_update
+          NN::FabKit::Commands::CheckUpdate.force_check_now
         end
 
         def self.mcp_start

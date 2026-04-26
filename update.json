@@ -1,5 +1,5 @@
 {
-  "latest_version": "0.10.1",
-  "rbz_url": "https://github.com/ra-artnft/NN_FabKit/releases/download/v0.10.1/nn_fabkit-0.10.1.rbz",
-  "release_notes": "v0.10.1 — Тестовый bump для проверки auto-update popup'а из v0.10.0.\n\nНикаких функциональных изменений. Этот релиз нужен, чтобы пользователь, у которого установлена v0.10.0, увидел popup при следующем старте SU: «Обновление NN FabKit доступно: v0.10.1. Обновить сейчас?» Yes/No. Кнопка YES должна корректно скачать и поставить .rbz."
+  "latest_version": "0.10.2",
+  "rbz_url": "https://github.com/ra-artnft/NN_FabKit/releases/download/v0.10.2/nn_fabkit-0.10.2.rbz",
+  "release_notes": "v0.10.2 — Diagnostic build: debug logs + toolbar rename + force-check menu.\n\n1. Toolbar переименован «NN FabKit» → «NN FabKit Tools» — flush'нет кэшированный sticky-floating state в SU registry от broken v0.9.0 SVG-попытки.\n2. Toolbar.show вызывается deferred через UI.start_timer(0.5) — даёт SU UI fully settle перед отрисовкой.\n3. Verbose puts logs в Ruby Console на каждом шаге toolbar.register! и check_update flow.\n4. Новый пункт меню «Test: фоновая проверка (без задержки)» — синхронный вызов update-check без UI.start_timer, для тестирования popup-логики мимо timer'а.\n\nЕсли v0.10.0 popup auto-update не сработал — открой Window → Ruby Console и вызови меню Extensions → NN FabKit → Test: фоновая проверка. Логи покажут что происходит."
 }

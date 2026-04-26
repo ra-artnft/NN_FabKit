@@ -96,28 +96,54 @@ module NN
         # Сетевые ошибки и offline-старт глотаем тихо — не цель fail
         # запуска SU.
         def background_check_on_startup
-          return if @startup_check_done
+          if @startup_check_done
+            puts "[NN::FabKit::CheckUpdate] startup check already done in this session"
+            return
+          end
           @startup_check_done = true
-
+          puts "[NN::FabKit::CheckUpdate] scheduling background check in #{STARTUP_CHECK_DELAY_S}s"
           ::UI.start_timer(STARTUP_CHECK_DELAY_S, false) { run_background_check }
         end
 
+        # Manual trigger для тестирования / меню — без таймера, синхронно.
+        # Поведение идентично background_check_on_startup но без задержки.
+        def force_check_now
+          puts "[NN::FabKit::CheckUpdate] force_check_now (manual)"
+          run_background_check
+        end
+
         def run_background_check
+          puts "[NN::FabKit::CheckUpdate] run_background_check called"
           url = Updater.manifest_url
-          return if url.nil? || url.to_s.strip.empty?
+          if url.nil? || url.to_s.strip.empty?
+            puts "[NN::FabKit::CheckUpdate] manifest URL is empty, skip"
+            return
+          end
+          puts "[NN::FabKit::CheckUpdate] manifest_url=#{url}"
 
           begin
             result = Updater.check(url)
           rescue StandardError => e
-            puts "[NN::FabKit] background update check failed: #{e.class}: #{e.message}"
+            puts "[NN::FabKit::CheckUpdate] check failed: #{e.class}: #{e.message}"
+            return
+          end
+          puts "[NN::FabKit::CheckUpdate] check result: " \
+               "up_to_date=#{result[:up_to_date]} " \
+               "current=#{result[:current]} latest=#{result[:latest]}"
+
+          if result[:up_to_date]
+            puts "[NN::FabKit::CheckUpdate] up to date, no popup"
             return
           end
 
-          return if result[:up_to_date]
+          dismissed_v = Sketchup.read_default(Updater::PREF_SECTION, DISMISSED_VERSION_KEY)
+          puts "[NN::FabKit::CheckUpdate] dismissed_version=#{dismissed_v.inspect}"
+          if dismissed?(result[:latest])
+            puts "[NN::FabKit::CheckUpdate] user already dismissed v#{result[:latest]}, no popup"
+            return
+          end
 
-          # User уже сказал «Игнорировать» для именно этой версии — silent.
-          return if dismissed?(result[:latest])
-
+          puts "[NN::FabKit::CheckUpdate] showing popup for v#{result[:latest]}"
           show_update_prompt(result)
         end
 
