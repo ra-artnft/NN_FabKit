@@ -23,6 +23,7 @@ module NN
             tb = ::UI::Toolbar.new(TOOLBAR_NAME)
             tb.add_item(build_inspector_command)
             tb.add_item(build_create_tube_command)
+            tb.add_item(build_fabkit_cad_command)
             puts "#{LOG_PREFIX} toolbar created, item count=#{tb.count}"
 
             state = tb.get_last_state
@@ -69,6 +70,19 @@ module NN
             cmd.menu_text       = "Создать трубу"
             cmd.status_bar_text = "Создать DC «Профильная труба» по типоразмеру из ГОСТ-каталога"
             small, large = icon_paths("create-tube")
+            cmd.small_icon = small
+            cmd.large_icon = large
+            cmd
+          end
+
+          def build_fabkit_cad_command
+            cmd = ::UI::Command.new("FabKit CAD") {
+              ::Sketchup.active_model.select_tool(NN::MetalFab::Tools::FabKitCadTool.new)
+            }
+            cmd.tooltip         = "FabKit CAD — interactive mitre cut на трубе"
+            cmd.menu_text       = "FabKit CAD"
+            cmd.status_bar_text = "Кликни вершину трубы → выбери угол среза мышью или цифрой в VCB"
+            small, large = icon_paths("fabkit-cad")
             cmd.small_icon = small
             cmd.large_icon = large
             cmd

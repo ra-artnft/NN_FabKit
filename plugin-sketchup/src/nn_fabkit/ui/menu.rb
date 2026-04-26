@@ -18,6 +18,7 @@ module NN
           # Submenu MetalFab — металл-ветка
           metalfab = parent.add_submenu("MetalFab")
           metalfab.add_item("Создать «Профильная труба»…")          { create_rect_tube }
+          metalfab.add_item("FabKit CAD — mitre cut…")              { fabkit_cad }
           metalfab.add_separator
           metalfab.add_item("Экспорт «Профильная труба» в IGES…")   { export_iges }
 
@@ -59,6 +60,10 @@ module NN
 
         def self.create_rect_tube
           NN::MetalFab::Commands::CreateRectTube.call
+        end
+
+        def self.fabkit_cad
+          ::Sketchup.active_model.select_tool(NN::MetalFab::Tools::FabKitCadTool.new)
         end
 
         def self.export_iges

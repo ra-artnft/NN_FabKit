@@ -2,6 +2,35 @@
 
 Формат — по [Keep a Changelog](https://keepachangelog.com/ru/1.1.0/). Версии монорепо независимы от версии плагина; версия плагина живёт в `plugin-sketchup/src/nn_fabkit/version.rb`.
 
+## [v0.0.25] — 2026-04-26
+
+### Added (FabKit CAD interactive mitre tool)
+- **Плагин 0.10.3 → 0.11.0** — третья кнопка toolbar'а «FabKit CAD» (иконка: rect tube cross-section + диагональный orange cut line с угловым indicator'ом). Активирует кастомный `Sketchup::Tool` для interactive mitre cutting:
+  - **State 1 (waiting_for_apex)**: пользователь кликает вершину rect_tube DC. Tool ищет parent ComponentInstance с `nn_metalfab.profile_type=="rect_tube"`, определяет ближайший конец (z=0 или z=length) по distance.
+  - **State 2 (waiting_for_angle)**: live protractor нарисован в plane perpendicular оси трубы, реальный 3D arc. Mouse move → live angle update. VCB (Value Control Box) активирован — user может набрать число + Enter (как в SU Rotate / Move tool'ах).
+  - **Apply**: `RectTubeMitre.rebuild_with_cut` — vertex displacement через `Entities#transform_by_vectors`. Atomic per-vertex смещение, нет артефактов open holes.
+- Новый module `NN::MetalFab::ProfileGenerator::RectTubeMitre`. Стратегия: построить perpendicular tube, потом сдвинуть вершины cut-конца по `dz = sign × y × tan(angle)`. SU автоматически деформирует connected faces (sides → trapezoids, endcap → tilted plane).
+- `attr_dict.rb` расширен: `cut_z0_angle_deg` / `cut_zL_angle_deg` (default 0.0 = perpendicular). `read_rect_tube_params(entity)` возвращает все params включая cut state (для nc-export integration).
+
+### Added (product vision)
+- **`docs/PRODUCT_VISION.md`** — формализация конечной цели продукта:
+  - 3 выхода: laser tube IGES (CypTube) + wood saw DXF (OCL-naming) + docs (LayOut).
+  - One-click cut-list как ключевая UX-фича (группировка идентичных деталей).
+  - Принципы: точная BREP-геометрия, метаданные на каждой детали, локальный offline pipeline.
+  - Roadmap-таблица с этапами (0..7).
+
+### New files
+- `plugin-sketchup/src/nn_fabkit/metalfab/profile_generator/rect_tube_mitre.rb`
+- `plugin-sketchup/src/nn_fabkit/metalfab/tools/fabkit_cad_tool.rb`
+- `plugin-sketchup/src/nn_fabkit/ui/icons/fabkit-cad-{16,24}.png`
+- `docs/PRODUCT_VISION.md`
+
+### Modified
+- `plugin-sketchup/src/nn_fabkit/main.rb` — `Sketchup.require` для нового generator + tool.
+- `plugin-sketchup/src/nn_fabkit/metalfab/attr_dict.rb` — cut fields + read_rect_tube_params helper.
+- `plugin-sketchup/src/nn_fabkit/ui/toolbar.rb` — третья кнопка `build_fabkit_cad_command`.
+- `plugin-sketchup/src/nn_fabkit/ui/menu.rb` — пункт «MetalFab → FabKit CAD…» fallback.
+
 ## [v0.0.24] — 2026-04-26
 
 ### Added (auto-update popup при старте)
