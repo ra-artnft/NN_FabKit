@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "nn-fabkit-nc-export"
-version = "0.4.1"
+version = "0.5.0"
 description = "NN FabKit NC-export — standalone IGES/DXF writer для CNC трубопрофилерезов и листовых станков (ADR-017)."
 readme = "README.md"
 requires-python = ">=3.10"

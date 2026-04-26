@@ -135,3 +135,103 @@ def test_rect_tube_invalid_inputs():
         rect_tube_box(width_mm=40, height_mm=20, wall_mm=-1, length_mm=600)
     with pytest.raises(ValueError):
         rect_tube_box(width_mm=40, height_mm=20, wall_mm=2, length_mm=600, radius_mm=-1)
+
+
+# ----------------------------------------------------------------------
+# rect_tube_hollow_mitre_xl_45 — proper LOD-2 hollow с 45° mitre на +X конце
+# ----------------------------------------------------------------------
+
+import math
+from nn_fabkit_nc_export.tube.rect_tube import rect_tube_hollow_mitre_xl_45
+
+
+def test_hollow_mitre_basic_entity_counts():
+    """Composition: 4 outer plane + 4 outer cyl + 4 inner plane + 4 inner cyl
+    + 1 perpendicular endcap + 1 mitre endcap = 18 Type 144."""
+    doc = rect_tube_hollow_mitre_xl_45(
+        width_mm=40, height_mm=20, wall_mm=1.5, length_mm=600,
+    )
+    trimmed = [e for e in doc.entities if e.type_number == 144]
+    assert len(trimmed) == 18
+    labels = {e.label for e in trimmed}
+    expected = {
+        "F_YPLUS", "F_YMINS", "F_ZPLUS", "F_ZMINS",
+        "C_PP", "C_MP", "C_MM", "C_PM",
+        "I_YPLUS", "I_YMINS", "I_ZPLUS", "I_ZMINS",
+        "I_CPP", "I_CMP", "I_CMM", "I_CPM",
+        "E_X0", "E_XL_MIT",
+    }
+    assert labels == expected
+
+
+def test_hollow_mitre_serializes_valid_iges():
+    doc = rect_tube_hollow_mitre_xl_45(
+        width_mm=40, height_mm=20, wall_mm=1.5, length_mm=600,
+    )
+    lines = _split(doc.serialize())
+    assert all(len(l) == LINE_WIDTH for l in lines)
+    sections = {l[72] for l in lines}
+    assert sections == {"S", "G", "D", "P", "T"}
+
+
+def test_hollow_mitre_writes_file(tmp_path):
+    out = tmp_path / "mitre.igs"
+    doc = rect_tube_hollow_mitre_xl_45(
+        width_mm=40, height_mm=20, wall_mm=1.5, length_mm=600,
+    )
+    doc.write(out)
+    assert out.exists()
+    raw = out.read_bytes()
+    assert not raw.startswith(b"\xef\xbb\xbf")  # без UTF-8 BOM
+    assert all(b < 128 for b in raw)  # ASCII-only
+
+
+def test_hollow_mitre_body_extends_correctly():
+    """+Z plane должен extend до x=L+hh, -Z до x=L-hh."""
+    L, W, H = 600.0, 40.0, 20.0
+    hh = H / 2.0
+    doc = rect_tube_hollow_mitre_xl_45(
+        width_mm=W, height_mm=H, wall_mm=1.5, length_mm=L,
+    )
+    surfs = {e.label: e for e in doc.entities if e.type_number == 128}
+    # _build_trimmed_plane creates surface с label = f"S_{label[:6]}".
+    # "F_ZPLUS"[:6] = "F_ZPLU"; full surface label = "S_F_ZPLU".
+    fzp = surfs["S_F_ZPLU"]
+    max_x_zplus = max(p[0] for p in [fzp.cp00, fzp.cp10, fzp.cp01, fzp.cp11])
+    assert math.isclose(max_x_zplus, L + hh, abs_tol=1e-6)
+    fzm = surfs["S_F_ZMIN"]
+    max_x_zmins = max(p[0] for p in [fzm.cp00, fzm.cp10, fzm.cp01, fzm.cp11])
+    assert math.isclose(max_x_zmins, L - hh, abs_tol=1e-6)
+
+
+def test_hollow_mitre_elliptic_arcs_use_sqrt2_over_2_weight():
+    """NURBS arcs в mitre cylinder corner и mitre endcap должны иметь
+    weight √2/2 средней ctrl-точки (стандарт rational quadratic для 90°)."""
+    doc = rect_tube_hollow_mitre_xl_45(
+        width_mm=40, height_mm=20, wall_mm=1.5, length_mm=600,
+    )
+    arcs = [e for e in doc.entities if e.type_number == 126]
+    expected_w = math.sqrt(2.0) / 2.0
+    for arc in arcs:
+        assert math.isclose(arc.weights[1], expected_w, abs_tol=1e-9), (
+            f"arc {arc.label}: weight={arc.weights[1]}"
+        )
+
+
+def test_hollow_mitre_invalid_inputs():
+    import pytest
+    # wall=0
+    with pytest.raises(ValueError):
+        rect_tube_hollow_mitre_xl_45(
+            width_mm=40, height_mm=20, wall_mm=0, length_mm=600,
+        )
+    # wall too large (cavity collapse)
+    with pytest.raises(ValueError):
+        rect_tube_hollow_mitre_xl_45(
+            width_mm=40, height_mm=20, wall_mm=15, length_mm=600,
+        )
+    # explicit radius_mm=0 (no roundings — illegal для hollow mitre LOD-2)
+    with pytest.raises(ValueError):
+        rect_tube_hollow_mitre_xl_45(
+            width_mm=40, height_mm=20, wall_mm=1.5, length_mm=600, radius_mm=0,
+        )

@@ -2,6 +2,25 @@
 
 Формат — по [Keep a Changelog](https://keepachangelog.com/ru/1.1.0/). Версии монорепо независимы от версии плагина; версия плагина живёт в `plugin-sketchup/src/nn_fabkit/version.rb`.
 
+## [v0.0.20] — 2026-04-26
+
+### Added (proper hollow mitre 45° + hole prototype)
+- **`app-desktop/nc-export` 0.4.1 → 0.5.0** — два новых generator'а в `tube/rect_tube.py`:
+  - **`rect_tube_with_hole_y_plus`** — hollow rounded tube + сквозное круглое отверстие через +Y стенку (Type 120 SoR + 2 Type 102 composite circles из 4 NURBS arcs degree 2 + post-факт mutation `inner_boundaries` для outer/inner +Y Type 144). 199 entities. CLI: `rect-tube-hole-y-plus --hole-x --hole-z --hole-radius`.
+  - **`rect_tube_hollow_mitre_xl_45`** — proper mitre 45° на +X конце с эллиптическими углами. 4 outer/inner trapezoid planes + 4 outer/inner cylinder corners cut by mitre plane (boundary с elliptic arc Type 126 rational quadratic, weight √2/2 для 90° conic) + perpendicular endcap на x=0 + annular rounded-rect endcap в наклонной плоскости x=L+z. 186 entities. CLI: `rect-tube-hollow-mitre-45`.
+- Helper `_nurbs_arc_90_3pts` — generic 90° rational quadratic Bezier из 3 explicit 3D ctrl points (для эллиптических arc'ов).
+- Helper `_build_trimmed_cylinder_corner_mitre_xl` — четверть-цилиндр обрезан mitre-плоскостью на +X конце, boundary loop = axial + elliptic arc + axial + circular arc.
+- Helper `_emit_outer_shell_mitre_xl` / `_emit_inner_shell_mitre_xl` / `_emit_mitre_annular_endcap`.
+- Параметр `blank_outer` к `_emit_annular_endcap` (default True для backward compat). Mitre case передаёт False.
+- Новые examples: `rect-tube-hole-y-plus_40x20x1.5_L600_h200_z0_r4__v0.4.1-prototype.igs`, `rect-tube-hollow-mitre-45_40x20x1.5_L600__v0.4.1-proper.igs`, `rect-tube-mitre-45_40x20_L600__v0.4.1-prototype.igs`.
+
+### Verified in CypTube
+- **Hole**: голубой контур по внутреннему периметру отверстия + зелёный по внешнему. Заказчик подтвердил визуально (отверстие на стороне 20-мм, центр в x=200).
+- **Hollow mitre 45°**: full зелёный outer rounded-rect outline + голубой inner rounded-rect cut path на наклонной endcap. Зелёные direction-arrow фрагменты на углах радиусов сохраняются — то же поведение в SolidWorks-reference IGS, признано нормальным CypTube renderer artifact (в memory зафиксировано).
+
+### Tests
+- 38 → 44 тестов (6 новых для hollow mitre): entity counts, valid IGES serialization, file write, body extends correctly до x=L+hh / x=L-hh, elliptic arcs use weight √2/2, invalid inputs raise.
+
 ## [v0.0.19] — 2026-04-26
 
 ### Added

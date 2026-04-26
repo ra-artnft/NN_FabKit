@@ -17,7 +17,13 @@ import sys
 from pathlib import Path
 
 from . import __version__
-from .tube.rect_tube import hello_surface, rect_tube_box
+from .tube.rect_tube import (
+    hello_surface,
+    rect_tube_box,
+    rect_tube_hollow_mitre_xl_45,
+    rect_tube_mitre_xl_45,
+    rect_tube_with_hole_y_plus,
+)
 
 
 def _build_parser() -> argparse.ArgumentParser:
@@ -40,6 +46,43 @@ def _build_parser() -> argparse.ArgumentParser:
     p_hello.add_argument(
         "-o", "--output", type=Path, required=True, help="путь сохранения .igs"
     )
+
+    # rect-tube-mitre-45 — прототип с миттер-резом 45° (LOD-1 без скруглений)
+    p_mitre = sub.add_parser(
+        "rect-tube-mitre-45",
+        help="ПРОТОТИП: труба с миттером 45° на x=L (LOD-1, без полости и скруглений)",
+    )
+    p_mitre.add_argument("--width", type=float, required=True)
+    p_mitre.add_argument("--height", type=float, required=True)
+    p_mitre.add_argument("--length", type=float, required=True)
+    p_mitre.add_argument("-o", "--output", type=Path, required=True)
+
+    # rect-tube-hole-y-plus — прототип hollow tube + сквозное отверстие
+    p_hole = sub.add_parser(
+        "rect-tube-hole-y-plus",
+        help="ПРОТОТИП: hollow tube + сквозное отверстие через +Y стенку",
+    )
+    p_hole.add_argument("--width", type=float, required=True)
+    p_hole.add_argument("--height", type=float, required=True)
+    p_hole.add_argument("--wall", type=float, required=True)
+    p_hole.add_argument("--length", type=float, required=True)
+    p_hole.add_argument("--radius", type=float, default=None)
+    p_hole.add_argument("--hole-x", type=float, required=True, help="x координата центра отверстия, мм")
+    p_hole.add_argument("--hole-z", type=float, required=True, help="z координата центра отверстия, мм")
+    p_hole.add_argument("--hole-radius", type=float, required=True, help="радиус отверстия, мм")
+    p_hole.add_argument("-o", "--output", type=Path, required=True)
+
+    # rect-tube-hollow-mitre-45 — прототип на hollow+rounded трубе (не работает корректно в CypTube)
+    p_hmitre = sub.add_parser(
+        "rect-tube-hollow-mitre-45",
+        help="ПРОТОТИП (broken): hollow tube + mitre 45° (CypTube не распознаёт)",
+    )
+    p_hmitre.add_argument("--width", type=float, required=True)
+    p_hmitre.add_argument("--height", type=float, required=True)
+    p_hmitre.add_argument("--wall", type=float, required=True)
+    p_hmitre.add_argument("--length", type=float, required=True)
+    p_hmitre.add_argument("--radius", type=float, default=None)
+    p_hmitre.add_argument("-o", "--output", type=Path, required=True)
 
     # rect-tube
     p_tube = sub.add_parser(
@@ -83,6 +126,51 @@ def main(argv: list[str] | None = None) -> int:
             f"nc-export {__version__}  hello-surface "
             f"{args.width}x{args.length} mm -> {args.output} "
             f"({len(doc.entities)} entities)"
+        )
+        return 0
+
+    if args.command == "rect-tube-mitre-45":
+        doc = rect_tube_mitre_xl_45(
+            width_mm=args.width, height_mm=args.height, length_mm=args.length,
+        )
+        doc.file_name = args.output.name
+        doc.write(args.output)
+        print(
+            f"nc-export {__version__}  rect-tube-mitre-45 "
+            f"{args.width}x{args.height} L={args.length} mm -> {args.output} "
+            f"({len(doc.entities)} entities)"
+        )
+        return 0
+
+    if args.command == "rect-tube-hole-y-plus":
+        doc = rect_tube_with_hole_y_plus(
+            width_mm=args.width, height_mm=args.height,
+            wall_mm=args.wall, length_mm=args.length,
+            radius_mm=args.radius,
+            hole_x_mm=args.hole_x, hole_z_mm=args.hole_z,
+            hole_radius_mm=args.hole_radius,
+        )
+        doc.file_name = args.output.name
+        doc.write(args.output)
+        print(
+            f"nc-export {__version__}  rect-tube-hole-y-plus "
+            f"{args.width}x{args.height}x{args.wall} L={args.length} "
+            f"hole=({args.hole_x},{args.hole_z}) r={args.hole_radius} mm -> "
+            f"{args.output} ({len(doc.entities)} entities)"
+        )
+        return 0
+
+    if args.command == "rect-tube-hollow-mitre-45":
+        doc = rect_tube_hollow_mitre_xl_45(
+            width_mm=args.width, height_mm=args.height,
+            wall_mm=args.wall, length_mm=args.length, radius_mm=args.radius,
+        )
+        doc.file_name = args.output.name
+        doc.write(args.output)
+        print(
+            f"nc-export {__version__}  rect-tube-hollow-mitre-45 "
+            f"{args.width}x{args.height}x{args.wall} L={args.length} mm -> "
+            f"{args.output} ({len(doc.entities)} entities)"
         )
         return 0
 
