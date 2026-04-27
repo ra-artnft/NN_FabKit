@@ -1,5 +1,5 @@
 {
-  "latest_version": "0.12.2",
-  "rbz_url": "https://github.com/ra-artnft/NN_FabKit/releases/download/v0.12.2/nn_fabkit-0.12.2.rbz",
-  "release_notes": "v0.12.2 — cut-list по деталям + размеры на viewport.\n\nCut-list: добавлена колонка «Длина, мм» (длина одной детали). Группировка теперь по паре (типоразмер × длина), а не только по типоразмеру. Видно «4 шт × 1350 мм = 5400 мм», а не только Σ=5400.\n\nViewport labels дополнены размерами по осям: «Сверху (1350 × 1350 мм)», «Спереди (1350 мм)», «Сбоку (1350 мм)». Изометрия без размеров. Размеры авто-detect'ятся из axis bbox tube-инстансов (без толщины сечения).\n\nПолный changelog: https://github.com/ra-artnft/NN_FabKit/releases"
+  "latest_version": "0.12.3",
+  "rbz_url": "https://github.com/ra-artnft/NN_FabKit/releases/download/v0.12.3/nn_fabkit-0.12.3.rbz",
+  "release_notes": "v0.12.3 — кнопка PDF cut-list в toolbar.\n\nДобавлена 4-я кнопка в верхнюю панель NN FabKit (рядом с Inspector / Создать трубу / FabKit CAD): «PDF cut-list» с иконкой страницы.\n\nКлик → savepanel → автоматический A4 чертёж + PDF + предложение открыть. Тот же flow что Extensions → NN FabKit → MetalFab → Создать PDF cut-list, но в один клик из toolbar.\n\nПолный changelog: https://github.com/ra-artnft/NN_FabKit/releases"
 }

@@ -2,6 +2,21 @@
 
 Формат — по [Keep a Changelog](https://keepachangelog.com/ru/1.1.0/). Версии монорепо независимы от версии плагина; версия плагина живёт в `plugin-sketchup/src/nn_fabkit/version.rb`.
 
+## [v0.0.38] — 2026-04-27
+
+### Added (toolbar: кнопка PDF cut-list)
+
+- **Плагин 0.12.2 → 0.12.3** — feedback пользователя: «нужна кнопка PDF на видном месте, там же где CAD».
+- В верхнюю NN FabKit toolbar добавлена 4-я кнопка «**PDF cut-list**» с иконкой страницы. Клик = `NN::MetalFab::Commands::ExportLayoutPdf.call` (тот же flow, что Extensions → NN FabKit → MetalFab → Создать PDF cut-list).
+- Иконки: [`ui/icons/pdf-cut-list-16.png`](plugin-sketchup/src/nn_fabkit/ui/icons/pdf-cut-list-16.png) и `pdf-cut-list-24.png` — белая страница с красной рамкой и текстом «PDF» (24px) или горизонтальные «строки» (16px).
+
+### Modified
+- `plugin-sketchup/src/nn_fabkit/ui/toolbar.rb` — `build_pdf_cut_list_command`, регистрация в toolbar после FabKit CAD.
+
+### Added (icons)
+- `plugin-sketchup/src/nn_fabkit/ui/icons/pdf-cut-list-16.png`
+- `plugin-sketchup/src/nn_fabkit/ui/icons/pdf-cut-list-24.png`
+
 ## [v0.0.37] — 2026-04-27
 
 ### Added (LayOut: cut-list по деталям + размеры в подписях viewport)

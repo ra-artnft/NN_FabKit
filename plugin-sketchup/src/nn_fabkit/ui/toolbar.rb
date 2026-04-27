@@ -3,7 +3,7 @@
 module NN
   module FabKit
     module UI
-      # NN FabKit toolbar — две кнопки в верхней workspace area SU.
+      # NN FabKit toolbar — кнопки в верхней workspace area SU.
       # v0.10.3: добавлена вторая кнопка «Создать трубу» — toolbar
       # становится шире, drag handle area крупнее, dock-detection в SU 2025
       # работает (single-button toolbar имел слишком тонкий drag handle).
@@ -11,6 +11,8 @@ module NN
       # Кнопки:
       #   1. Inspector — открыть боковую панель.
       #   2. Создать трубу — UI.inputbox flow (CreateRectTube.call).
+      #   3. FabKit CAD — interactive mitre cut tool.
+      #   4. PDF cut-list — A4 чертёж с 4 viewport-ами + cut-list (v0.12.3+).
       module Toolbar
         TOOLBAR_NAME = "NN FabKit Tools".freeze
         LOG_PREFIX = "[NN::FabKit::UI::Toolbar]".freeze
@@ -24,6 +26,7 @@ module NN
             tb.add_item(build_inspector_command)
             tb.add_item(build_create_tube_command)
             tb.add_item(build_fabkit_cad_command)
+            tb.add_item(build_pdf_cut_list_command)
             puts "#{LOG_PREFIX} toolbar created, item count=#{tb.count}"
 
             state = tb.get_last_state
@@ -83,6 +86,20 @@ module NN
             cmd.menu_text       = "FabKit CAD"
             cmd.status_bar_text = "Кликни вершину трубы → выбери угол среза мышью или цифрой в VCB"
             small, large = icon_paths("fabkit-cad")
+            cmd.small_icon = small
+            cmd.large_icon = large
+            cmd
+          end
+
+          def build_pdf_cut_list_command
+            cmd = ::UI::Command.new("PDF cut-list") {
+              NN::MetalFab::Commands::ExportLayoutPdf.call
+            }
+            cmd.tooltip         = "Создать PDF cut-list (A4 + 4 вида + спецификация)"
+            cmd.menu_text       = "PDF cut-list"
+            cmd.status_bar_text = "Сгенерировать LayOut-чертёж + PDF: title block, " \
+                                  "Изо/Сверху/Спереди/Сбоку, спецификация по деталям"
+            small, large = icon_paths("pdf-cut-list")
             cmd.small_icon = small
             cmd.large_icon = large
             cmd
