@@ -2,6 +2,27 @@
 
 Формат — по [Keep a Changelog](https://keepachangelog.com/ru/1.1.0/). Версии монорепо независимы от версии плагина; версия плагина живёт в `plugin-sketchup/src/nn_fabkit/version.rb`.
 
+## [v0.0.28] — 2026-04-27
+
+### Reverted (FabKit CAD: откат к v0.11.0 manual mode)
+
+- **Плагин 0.11.5 → 0.11.6** — FabKit CAD откачен к initial v0.11.0 reализации (interactive vertex pick + drag-protractor, 1-tube manual mode). Selection-based 2-tube auto-mitre из v0.11.2..v0.11.5 удалён по решению пользователя — за 4 итерации redesign'а (v0.11.2 → v0.11.5) визуально корректный L-corner mitre так и не получен, хотя математика cuts (биссектрисная плоскость, совпадение vertices) была верифицирована через MCP.
+- Восстановленные файлы из v0.11.0 (commit e51daa5):
+  - `plugin-sketchup/src/nn_fabkit/metalfab/tools/fabkit_cad_tool.rb` — state machine `:waiting_for_apex` (vertex pick) → `:waiting_for_angle` (drag protractor / VCB).
+  - `plugin-sketchup/src/nn_fabkit/metalfab/profile_generator/rect_tube_mitre.rb` — `rebuild_with_cut` без trim mode и без cap rebuild.
+- Не затронуто:
+  - Inspector (tabs, supplier chip, subgroup filters) — сохранён.
+  - Toolbar 3-buttons (Inspector / Создать трубу / FabKit CAD) — сохранён, кнопка теперь активирует v0.11.0-style tool.
+  - Auto-update popup при старте — сохранён.
+  - Knowledge-base `12-tube-joints-geometry.md` — сохранён как reference для будущих работ.
+- Memory feedback "НЕ делать vertex pick UX" из сессии после v0.11.2 → отозван (был вынужденный ответ на specific bug, не fundamental design preference).
+
+### Modified
+- `plugin-sketchup/src/nn_fabkit/version.rb` — bump 0.11.5 → 0.11.6
+- `update.json` — pointer на v0.11.6 release
+- `plugin-sketchup/src/nn_fabkit/metalfab/tools/fabkit_cad_tool.rb` — restored from v0.11.0
+- `plugin-sketchup/src/nn_fabkit/metalfab/profile_generator/rect_tube_mitre.rb` — restored from v0.11.0
+
 ## [v0.0.27] — 2026-04-26
 
 ### Added (FabKit CAD: trim mode)
