@@ -2,6 +2,26 @@
 
 Формат — по [Keep a Changelog](https://keepachangelog.com/ru/1.1.0/). Версии монорепо независимы от версии плагина; версия плагина живёт в `plugin-sketchup/src/nn_fabkit/version.rb`.
 
+## [v0.0.30] — 2026-04-27
+
+### Added (FabKit CAD: single cut на axis intersection)
+
+- **Плагин 0.11.7 → 0.11.8** — по feedback'у пользователя «у нас два места реза, а должен быть один по центру между ними». Joint_point теперь вычисляется как **пересечение осей труб** через `Geom.closest_points` (не midpoint endpoints, который off-axis от обеих).
+- В [fabkit_cad_tool.rb:226-258](plugin-sketchup/src/nn_fabkit/metalfab/tools/fabkit_cad_tool.rb#L226-L258):
+  - `find_joint` теперь использует `Geom.closest_points(line_a, line_b)` для нахождения axis intersection (или для skew axes — пары closest points, midpoint которых)
+  - Добавлен helper `compute_trim(tube, end_data, target_world)` — возвращает new_length_mm + опциональный new_origin_world (для end_axis=-1 case)
+- В `apply_to_one_tube`: перед `rebuild_with_cut` применяется trim — обновляется transformation.origin (если joint at z=0) и `params[:length_mm]` устанавливается в trim_data[:new_length_mm].
+- В `draw_cut_plane`: rect рисуется в trimmed endpoint position. На perpendicular L-corner с пересекающимися axes обе rect совпадают в одной плоскости → visually выглядит как ОДИН cut.
+- Обоснование: в v0.11.2 baseline preview показывал 2 cyan rect — каждый на endpoint своей трубы. Endpoints не совпадают если трубы overlap'ятся в corner → 2 разных места реза. После моего fix'а оба рисуются на bisecting plane (axis intersection) → совпадают.
+
+### Implication для length_mm
+
+После apply mitre joint, length_mm каждой трубы обновляется до distance от far endpoint до axis intersection. Inspector / cut-list покажут эту новую длину — это правильное число для NC.
+
+### Modified
+- `plugin-sketchup/src/nn_fabkit/metalfab/tools/fabkit_cad_tool.rb` — `find_joint`, `compute_trim` (новый), `draw_preview` & `draw_cut_plane` (signature с endpoint_world), `apply_cut` & `apply_to_one_tube` (новый параметр `trim_data`).
+- `compute_tilt_dir` НЕ менялся — оставлен как в v0.11.2 baseline.
+
 ## [v0.0.29] — 2026-04-27
 
 ### Reverted (FabKit CAD: откат к v0.11.2 — selection-based 2-tube auto, до моих 'улучшений')

@@ -222,11 +222,20 @@ module NN
           # → mitre = angle_between / 2  (for symmetric joint)
           mitre_angle = angle_between_deg / 2.0
 
-          # Joint point: midpoint of best pair
-          jp = Geom::Point3d.linear_combination(
-            0.5, best[:end_a][:point],
-            0.5, best[:end_b][:point]
-          )
+          # Joint point: ОСЬ-ИНТЕРСЕКЦИЯ через Geom.closest_points.
+          # Не midpoint endpoints (тот off-axis от обеих труб) — а точка, где
+          # пересекаются (или ближе всего сходятся) оси. Для perpendicular L
+          # с пересекающимися axes это exactly intersection. Для skew axes
+          # (offset в 3D) — два разных closest_point'а, берём midpoint.
+          line_a = [tube_a.transformation.origin, axis_a]
+          line_b = [tube_b.transformation.origin, axis_b]
+          closest = Geom.closest_points(line_a, line_b)
+          jp = Geom::Point3d.linear_combination(0.5, closest[0], 0.5, closest[1])
+
+          # Trim params: каждая труба резается до СВОЕЙ closest_point (на её axis).
+          # new_length = distance от far endpoint до этой точки.
+          trim_a = compute_trim(tube_a, best[:end_a], closest[0])
+          trim_b = compute_trim(tube_b, best[:end_b], closest[1])
 
           # Tilt direction для каждой трубы — TO другой трубы (в local coords)
           tilt_a = compute_tilt_dir(tube_a, tube_b, best[:end_a])
@@ -240,8 +249,25 @@ module NN
             angle_between_deg: angle_between_deg,
             mitre_angle_deg: mitre_angle,
             tilt_dir_a_local: tilt_a,
-            tilt_dir_b_local: tilt_b
+            tilt_dir_b_local: tilt_b,
+            trim_a: trim_a,
+            trim_b: trim_b
           }
+        end
+
+        # Trim params для одной трубы.
+        # target_world — точка world coords куда должен попасть joint endpoint
+        # после trim (closest_point на axis этой трубы к axis другой).
+        def compute_trim(tube, end_data, target_world)
+          far = tube_endpoints(tube).find { |e| e[:end_axis] != end_data[:end_axis] }
+          new_length_mm = far[:point].distance(target_world).to_mm
+          if end_data[:end_axis] > 0
+            # Joint at z=length: transformation.origin = far end, не двигается
+            { new_length_mm: new_length_mm, new_origin_world: nil, endpoint_world: target_world }
+          else
+            # Joint at z=0: двигаем transformation.origin до target
+            { new_length_mm: new_length_mm, new_origin_world: target_world, endpoint_world: target_world }
+          end
         end
 
         # Endpoints трубы в world coords + end_axis_sign (+1 = z=length, -1 = z=0)
@@ -299,7 +325,8 @@ module NN
         end
 
         def draw_preview(view)
-          # Marker at joint point — magenta cross
+          # Marker at joint point — magenta cross. Это axis intersection
+          # (после trim — endpoint обеих труб совпадёт здесь).
           jp = @joint[:joint_point]
           marker_size = 30.mm
           view.line_width = 3
@@ -310,11 +337,15 @@ module NN
             jp.offset(Z_AXIS, -marker_size), jp.offset(Z_AXIS, marker_size)
           ])
 
-          # Cut plane preview на каждой трубе
+          # Cut plane preview — рисуется в TRIMMED endpoint каждой трубы
+          # (на bisecting plane joint'а). Для perpendicular L два rect совпадают
+          # в одной плоскости — visually выглядит как ОДИН cut.
           draw_cut_plane(view, @joint[:tube_a], @joint[:end_a],
-                         @joint[:mitre_angle_deg], @joint[:tilt_dir_a_local])
+                         @joint[:mitre_angle_deg], @joint[:tilt_dir_a_local],
+                         @joint[:trim_a][:endpoint_world])
           draw_cut_plane(view, @joint[:tube_b], @joint[:end_b],
-                         @joint[:mitre_angle_deg], @joint[:tilt_dir_b_local])
+                         @joint[:mitre_angle_deg], @joint[:tilt_dir_b_local],
+                         @joint[:trim_b][:endpoint_world])
 
           # Label с углом возле joint point
           view.drawing_color = "white"
@@ -326,21 +357,23 @@ module NN
           view.line_width = 1
         end
 
-        def draw_cut_plane(view, tube, end_data, angle_deg, tilt_dir_local)
-          # 4 угла rectangle на cut plane в local coords
+        # endpoint_world — где будет cut endpoint после trim (axis intersection),
+        # вместо текущего endpoint трубы. Cut rect рисуется centred на этой точке
+        # в orientation tube.transformation, с tilt по mitre angle.
+        def draw_cut_plane(view, tube, end_data, angle_deg, tilt_dir_local, endpoint_world)
           width_mm = AttrDict.read(tube.definition, "width_mm").to_f
           height_mm = AttrDict.read(tube.definition, "height_mm").to_f
-          length_mm = AttrDict.read(tube.definition, "length_mm").to_f
-          end_z_mm = end_data[:end_axis] > 0 ? length_mm : 0.0
           end_sign = end_data[:end_axis]
-
-          # Cut plane проходит через (0, 0, end_z) с normal в направлении
-          # axis_z + tilt_dir * tan(angle).
-          # Для preview: 4 угла = corners cross-section перетранслированные по dz.
           tan_a = Math.tan(angle_deg * Math::PI / 180.0)
           half_w = width_mm / 2.0
           half_h = height_mm / 2.0
           dx, dy = tilt_dir_local.x, tilt_dir_local.y
+
+          # Local axis directions в world (rotation only)
+          t = tube.transformation
+          x_world = Geom::Vector3d.new(1, 0, 0).transform(t).normalize
+          y_world = Geom::Vector3d.new(0, 1, 0).transform(t).normalize
+          z_world = Geom::Vector3d.new(0, 0, 1).transform(t).normalize
 
           local_corners = [
             [+half_w, +half_h], [+half_w, -half_h],
@@ -348,17 +381,14 @@ module NN
           ]
           world_corners = local_corners.map do |(lx, ly)|
             dz_mm = end_sign * (lx * dx + ly * dy) * tan_a
-            local_pt = Geom::Point3d.new(lx.mm, ly.mm, (end_z_mm + dz_mm).mm)
-            local_pt.transform(tube.transformation)
+            endpoint_world.offset(x_world, lx.mm).offset(y_world, ly.mm).offset(z_world, dz_mm.mm)
           end
 
-          # Draw outline + diagonal hatch — bright cyan (or yellow)
           view.line_width = 3
           view.drawing_color = "cyan"
           loop_pts = world_corners + [world_corners.first]
           view.draw_polyline(loop_pts)
 
-          # Cross diagonals — visual «X» indicator на cut plane
           view.drawing_color = "yellow"
           view.line_width = 2
           view.draw(GL_LINES, [
@@ -377,12 +407,14 @@ module NN
           model = ::Sketchup.active_model
 
           mitre = @joint[:mitre_angle_deg]
-          model.start_operation("FabKit CAD: mitre joint #{mitre.round(1)}°", true, false, false)
+          model.start_operation("FabKit CAD: trim+mitre joint #{mitre.round(1)}°", true, false, false)
           begin
-            apply_to_one_tube(@joint[:tube_a], @joint[:end_a], mitre, @joint[:tilt_dir_a_local])
-            apply_to_one_tube(@joint[:tube_b], @joint[:end_b], mitre, @joint[:tilt_dir_b_local])
+            apply_to_one_tube(@joint[:tube_a], @joint[:end_a], mitre,
+                              @joint[:tilt_dir_a_local], @joint[:trim_a])
+            apply_to_one_tube(@joint[:tube_b], @joint[:end_b], mitre,
+                              @joint[:tilt_dir_b_local], @joint[:trim_b])
             model.commit_operation
-            puts "[FabKitCadTool] applied mitre joint #{mitre}°"
+            puts "[FabKitCadTool] applied trim+mitre joint #{mitre}°"
           rescue StandardError => e
             model.abort_operation
             puts "[FabKitCadTool] ERROR: #{e.class}: #{e.message}"
@@ -396,7 +428,7 @@ module NN
           view.invalidate
         end
 
-        def apply_to_one_tube(tube, end_data, angle_deg, tilt_dir_local)
+        def apply_to_one_tube(tube, end_data, angle_deg, tilt_dir_local, trim_data)
           params = AttrDict.read_rect_tube_params(tube.definition)
           unless params
             raise "Не удалось прочитать params трубы #{tube.definition.name}"
@@ -407,6 +439,20 @@ module NN
                            params[:cut_z0_angle_deg]
           if existing_cut > 0.001
             raise "На конце #{tube.definition.name} уже mitre #{existing_cut.round(1)}°. Сначала Ctrl+Z."
+          end
+
+          # Trim: shift transformation если joint at z=0; обновить length_mm
+          if trim_data
+            if trim_data[:new_origin_world]
+              old_t = tube.transformation
+              x_axis = Geom::Vector3d.new(1, 0, 0).transform(old_t)
+              y_axis = Geom::Vector3d.new(0, 1, 0).transform(old_t)
+              z_axis = Geom::Vector3d.new(0, 0, 1).transform(old_t)
+              tube.transformation = Geom::Transformation.axes(
+                trim_data[:new_origin_world], x_axis, y_axis, z_axis
+              )
+            end
+            params = params.merge(length_mm: trim_data[:new_length_mm])
           end
 
           ProfileGenerator::RectTubeMitre.rebuild_with_cut(
