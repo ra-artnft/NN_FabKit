@@ -2,6 +2,17 @@
 
 Формат — по [Keep a Changelog](https://keepachangelog.com/ru/1.1.0/). Версии монорепо независимы от версии плагина; версия плагина живёт в `plugin-sketchup/src/nn_fabkit/version.rb`.
 
+## [v0.0.36] — 2026-04-27
+
+### Fixed (updater UI: длинные release notes ломали кнопку OK)
+
+- **Плагин 0.12.0 → 0.12.1** — feedback пользователя: «из-за большого полотна текста ознакомительного и отсутствия скроллинга я кнопку OK не вижу».
+- Корень: `UI.messagebox` в [check_update.rb](plugin-sketchup/src/nn_fabkit/commands/check_update.rb) показывал `release_notes` из `update.json` целиком. Windows MessageBox не имеет скролла — при overflow YES/NO кнопки уходят за низ экрана, обновление подтвердить невозможно.
+- Fix: `summarize_notes` truncate'ит notes до **6 строк / 400 символов**, добавляет «…» и **ссылку на полный changelog** ([github.com/ra-artnft/NN_FabKit/releases](https://github.com/ra-artnft/NN_FabKit/releases)). Кнопки YES/NO видны всегда. Применено и для manual check (`Extensions → NN FabKit → Проверить обновления…`), и для background popup при запуске SU.
+
+### Modified
+- `plugin-sketchup/src/nn_fabkit/commands/check_update.rb` — `build_update_prompt`, `summarize_notes`, константы `NOTES_MAX_LINES`, `NOTES_MAX_CHARS`, `RELEASES_URL`.
+
 ## [v0.0.35] — 2026-04-27
 
 ### Fixed (FabKit CAD: остаточные геометрические баги)

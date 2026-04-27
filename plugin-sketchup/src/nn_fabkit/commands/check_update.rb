@@ -15,6 +15,12 @@ module NN
         # Задержка перед фоновой проверкой при старте — даём SU прогрузиться
         # полностью, чтобы popup не вылетал поверх splash screen.
         STARTUP_CHECK_DELAY_S = 3.0
+        # Лимиты для release notes в messagebox — Windows MessageBox не
+        # скроллится; при overflow кнопки YES/NO уходят за экран. Длинные
+        # notes из update.json (раньше показывали целиком) скрывали OK.
+        NOTES_MAX_LINES = 6
+        NOTES_MAX_CHARS = 400
+        RELEASES_URL = "https://github.com/ra-artnft/NN_FabKit/releases".freeze
         # Один раз за сессию SU. Без guard'а timer'ы могут срабатывать
         # повторно при reload.
         @startup_check_done = false
@@ -44,11 +50,8 @@ module NN
             return
           end
 
-          notes = result[:release_notes].to_s
           confirm = ::UI.messagebox(
-            "Доступна новая версия: v#{result[:latest]} (текущая: v#{result[:current]}).\n\n" \
-            "#{notes.empty? ? '' : "Что нового:\n#{notes}\n\n"}" \
-            "Скачать и установить сейчас?",
+            build_update_prompt(result),
             MB_YESNO
           )
           return unless confirm == IDYES
@@ -148,11 +151,8 @@ module NN
         end
 
         def show_update_prompt(result)
-          notes = result[:release_notes].to_s
           confirm = ::UI.messagebox(
-            "Обновление NN FabKit доступно: v#{result[:latest]} (у вас v#{result[:current]}).\n\n" \
-            "#{notes.empty? ? '' : "Что нового:\n#{notes}\n\n"}" \
-            "Обновить сейчас?",
+            build_update_prompt(result),
             MB_YESNO
           )
 
@@ -163,6 +163,38 @@ module NN
             puts "[NN::FabKit] user dismissed v#{result[:latest]}; " \
                  "popup не появится для этой версии. Проверить вручную: " \
                  "Extensions → NN FabKit → Проверить обновления…"
+          end
+        end
+
+        # Сборка текста для UI.messagebox с release notes summary.
+        # Лимиты NOTES_MAX_LINES / NOTES_MAX_CHARS — Windows MessageBox без
+        # scroll, при overflow YES/NO кнопки уходят за экран.
+        def build_update_prompt(result)
+          notes_block = summarize_notes(result[:release_notes].to_s)
+          [
+            "Обновление NN FabKit: v#{result[:latest]} (у вас v#{result[:current]}).",
+            notes_block,
+            "Обновить сейчас?"
+          ].reject(&:empty?).join("\n\n")
+        end
+
+        # Усекаем notes до NOTES_MAX_LINES / NOTES_MAX_CHARS, добавляем «…»
+        # и ссылку на полный changelog на GitHub.
+        def summarize_notes(notes)
+          return "" if notes.strip.empty?
+          lines = notes.split("\n")
+          truncated_by_lines = lines.size > NOTES_MAX_LINES
+          summary = lines.first(NOTES_MAX_LINES).join("\n")
+          if summary.length > NOTES_MAX_CHARS
+            summary = summary[0, NOTES_MAX_CHARS]
+            truncated = true
+          else
+            truncated = truncated_by_lines
+          end
+          if truncated
+            "Что нового:\n#{summary}…\n\nПолный список изменений:\n#{RELEASES_URL}"
+          else
+            "Что нового:\n#{summary}"
           end
         end
 
