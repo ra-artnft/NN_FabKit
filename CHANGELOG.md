@@ -2,6 +2,21 @@
 
 Формат — по [Keep a Changelog](https://keepachangelog.com/ru/1.1.0/). Версии монорепо независимы от версии плагина; версия плагина живёт в `plugin-sketchup/src/nn_fabkit/version.rb`.
 
+## [v0.0.29] — 2026-04-27
+
+### Reverted (FabKit CAD: откат к v0.11.2 — selection-based 2-tube auto, до моих 'улучшений')
+
+- **Плагин 0.11.6 → 0.11.7** — FabKit CAD откачен к v0.11.2 (commit 815fbb8) — selection-based 2-tube auto-mitre, **начальная версия** этого UX до моих refinement'ов v0.11.3..v0.11.5. Пользователь идентифицировал v0.11.2 как working baseline.
+- v0.11.6 (vertex pick из v0.11.0) и предложенный v0.11.1 (face pick) не подошли — нужен selection-based 2-tube workflow.
+- Восстановленные файлы из v0.11.2:
+  - `plugin-sketchup/src/nn_fabkit/metalfab/tools/fabkit_cad_tool.rb`
+  - `plugin-sketchup/src/nn_fabkit/metalfab/profile_generator/rect_tube_mitre.rb`
+- Удалены изменения v0.11.3 (tilt direction sign fix, который сломал результат), v0.11.4 (compute_tilt_dir переписан через far-joint vector), v0.11.5 (trim mode).
+- Не затронуто: Inspector, toolbar, auto-update, knowledge-base.
+
+### Known issue в v0.11.2 (из original memory)
+- Тонкие protrusions на L-corner — overlap труб не убирается полностью на endpoint-cut'е. Это known issue, но user accepts as baseline.
+
 ## [v0.0.28] — 2026-04-27
 
 ### Reverted (FabKit CAD: откат к v0.11.0 manual mode)
