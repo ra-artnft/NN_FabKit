@@ -42,6 +42,7 @@ module NN
           smooth_arc_edges_in_profile(profile_face, width_mm, height_mm)
           extrude(ents, profile_face, length_mm)
           smooth_vertical_arc_edges(ents, length_mm, width_mm, height_mm)
+          add_bbox_snap_points(ents, width_mm, height_mm, length_mm)
 
           AttrDict.write_rect_tube(
             definition,
@@ -223,6 +224,26 @@ module NN
         def self.warn_budget(definition, faces, edges)
           puts "[NN::MetalFab] WARN: '#{definition.name}' over geometry budget — " \
                "faces=#{faces}/#{FACES_LIMIT}, edges=#{edges}/#{EDGES_LIMIT}"
+        end
+
+        # Construction points в 8 углах bounding box компонента — чтобы SU
+        # snap inference (cursor inference при создании/перемещении другой
+        # детали) ловил ровно прямоугольные углы W×H, а не вершины на
+        # rounded corners (8 segments × radius), которые physically лежат
+        # внутри bbox и сдвигают snap target от ожидаемого «угла трубы».
+        # ConstructionPoint визуально — крошечный «+» symbol, едва заметный,
+        # можно скрыть глобально через View → Construction Geometry если
+        # мешает. Snap к нему имеет высокий priority как Endpoint inference.
+        def self.add_bbox_snap_points(entities, width_mm, height_mm, length_mm)
+          hw = width_mm.mm / 2.0
+          hh = height_mm.mm / 2.0
+          [0, length_mm.mm].each do |z|
+            [-hw, +hw].each do |x|
+              [-hh, +hh].each do |y|
+                entities.add_cpoint(Geom::Point3d.new(x, y, z))
+              end
+            end
+          end
         end
       end
     end

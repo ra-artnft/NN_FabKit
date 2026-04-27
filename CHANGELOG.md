@@ -2,6 +2,17 @@
 
 Формат — по [Keep a Changelog](https://keepachangelog.com/ru/1.1.0/). Версии монорепо независимы от версии плагина; версия плагина живёт в `plugin-sketchup/src/nn_fabkit/version.rb`.
 
+## [v0.0.31] — 2026-04-27
+
+### Added (snap к bbox-углам компонента)
+- **Плагин 0.11.8 → 0.11.9** — по feedback'у пользователя: «при стыковке труб snap липнет к geometry внутри (rounded corner vertices), а нужно к краям bbox компонента».
+- В [rect_tube.rb](plugin-sketchup/src/nn_fabkit/metalfab/profile_generator/rect_tube.rb) `RectTube.build` после extrude добавляется новый шаг `add_bbox_snap_points(entities, w, h, length)` — создаёт 8 ConstructionPoint в углах bounding box (4 на z=0 + 4 на z=length). SU snap inference cursor подхватывает их как Endpoint targets с высоким priority.
+- Визуально: cpoints — крошечные «+» symbols, едва заметны. Можно скрыть глобально через `View → Construction Geometry` если мешают.
+- Это решает classical SU issue с rounded geometry: 8 segments на corner radius создают vertices где нет физических углов компонента, и snap прилипает не туда. ConstructionPoint в bbox corner — explicit hint для SU snap.
+
+### Modified
+- `plugin-sketchup/src/nn_fabkit/metalfab/profile_generator/rect_tube.rb` — wire `add_bbox_snap_points` в `build`, новый helper в конце модуля.
+
 ## [v0.0.30] — 2026-04-27
 
 ### Added (FabKit CAD: single cut на axis intersection)
