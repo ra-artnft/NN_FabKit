@@ -46,6 +46,20 @@ module NN
 
           existing_z0_cut = params[:cut_z0_angle_deg] || 0.0
           existing_zL_cut = params[:cut_zL_angle_deg] || 0.0
+          # Saved tilt directions для opposite-end restoration (v0.11.11+).
+          # Если params не содержит tilt — fallback (0, 1) (default +Y, как было
+          # до v0.11.11). Это сохраняет backward compat для definitions
+          # созданных в v0.11.10 и раньше.
+          existing_z0_tilt = Geom::Vector3d.new(
+            params[:cut_z0_tilt_x] || 0.0,
+            params[:cut_z0_tilt_y] || 1.0,
+            0
+          )
+          existing_zL_tilt = Geom::Vector3d.new(
+            params[:cut_zL_tilt_x] || 0.0,
+            params[:cut_zL_tilt_y] || 1.0,
+            0
+          )
 
           RectTube.build(
             definition,
@@ -65,27 +79,35 @@ module NN
                         params[:length_mm], tilt_dir)
           end
 
-          # Восстановить cut на втором конце если он был. Direction для restore —
-          # default +Y (поскольку мы не сохраняли исходный direction).
-          # FUTURE: сохранять tilt_dir в attr_dict для precise restore.
-          default_dir = Geom::Vector3d.new(0, 1, 0)
+          # Восстановить cut на втором конце если он был, с PRESERVED tilt
+          # direction (читаем из saved attrs, не используем default).
           if end_axis_sign > 0 && existing_z0_cut > 1.0e-3
             apply_mitre(definition.entities, -1, existing_z0_cut,
-                        params[:length_mm], default_dir)
+                        params[:length_mm], existing_z0_tilt)
             new_z0 = existing_z0_cut
             new_zL = angle_deg
+            new_z0_tilt = existing_z0_tilt
+            new_zL_tilt = tilt_dir
           elsif end_axis_sign < 0 && existing_zL_cut > 1.0e-3
             apply_mitre(definition.entities, +1, existing_zL_cut,
-                        params[:length_mm], default_dir)
+                        params[:length_mm], existing_zL_tilt)
             new_zL = existing_zL_cut
             new_z0 = angle_deg
+            new_z0_tilt = tilt_dir
+            new_zL_tilt = existing_zL_tilt
           else
             new_z0 = end_axis_sign < 0 ? angle_deg : 0.0
             new_zL = end_axis_sign > 0 ? angle_deg : 0.0
+            new_z0_tilt = end_axis_sign < 0 ? tilt_dir : Geom::Vector3d.new(0, 1, 0)
+            new_zL_tilt = end_axis_sign > 0 ? tilt_dir : Geom::Vector3d.new(0, 1, 0)
           end
 
           AttrDict.write(definition, "cut_z0_angle_deg", new_z0.to_f)
           AttrDict.write(definition, "cut_zL_angle_deg", new_zL.to_f)
+          AttrDict.write(definition, "cut_z0_tilt_x", new_z0_tilt.x.to_f)
+          AttrDict.write(definition, "cut_z0_tilt_y", new_z0_tilt.y.to_f)
+          AttrDict.write(definition, "cut_zL_tilt_x", new_zL_tilt.x.to_f)
+          AttrDict.write(definition, "cut_zL_tilt_y", new_zL_tilt.y.to_f)
 
           definition
         end

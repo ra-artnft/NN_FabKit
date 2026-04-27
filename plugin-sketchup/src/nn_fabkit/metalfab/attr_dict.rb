@@ -41,6 +41,10 @@ module NN
 
       # Прочитать все параметры профиля для regenerate.
       # Возвращает Hash или nil если definition не из плагина (нет profile_type).
+      # cut_z*_tilt_x/y — направление tilt для cut (long side mitre direction
+      # в local coords). Сохраняются при apply mitre для precise restoration
+      # когда rebuild_with_cut заново создаёт opposite-end cut. Default (0, 1)
+      # = +Y (legacy fallback for definitions без сохранённого tilt).
       def read_rect_tube_params(entity)
         return nil unless read(entity, "profile_type") == "rect_tube"
         {
@@ -54,7 +58,11 @@ module NN
           mass_per_m_kg:   read(entity, "mass_per_m_kg"),
           steel_grade:     read(entity, "steel_grade"),
           cut_z0_angle_deg: (read(entity, "cut_z0_angle_deg") || 0.0).to_f,
-          cut_zL_angle_deg: (read(entity, "cut_zL_angle_deg") || 0.0).to_f
+          cut_zL_angle_deg: (read(entity, "cut_zL_angle_deg") || 0.0).to_f,
+          cut_z0_tilt_x:   (read(entity, "cut_z0_tilt_x") || 0.0).to_f,
+          cut_z0_tilt_y:   (read(entity, "cut_z0_tilt_y") || 1.0).to_f,
+          cut_zL_tilt_x:   (read(entity, "cut_zL_tilt_x") || 0.0).to_f,
+          cut_zL_tilt_y:   (read(entity, "cut_zL_tilt_y") || 1.0).to_f
         }
       end
 

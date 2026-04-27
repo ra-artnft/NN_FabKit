@@ -40,6 +40,19 @@ module NN
       # доступна новая версия — popup MB_YESNO «Обновить / Игнорировать».
       # Сетевые ошибки тихо глотает, не блокирует загрузку SU.
       NN::FabKit::Commands::CheckUpdate.background_check_on_startup
+      # MCP-сервер auto-start (v0.11.11+) — запускается через UI.start_timer
+      # 2s после load чтобы SU успел инициализироваться. TCP порт 127.0.0.1:9876
+      # (default). Если порт занят (другой instance SU уже слушает) — log error,
+      # SU не падает. Manual control остаётся через menu Extensions → NN FabKit
+      # → MCP сервер → Запустить/Остановить.
+      ::UI.start_timer(2.0, false) do
+        begin
+          NN::FabKit::Mcp.start
+          puts "[NN::FabKit] MCP сервер auto-started on plugin load"
+        rescue StandardError => e
+          puts "[NN::FabKit] MCP auto-start failed: #{e.class}: #{e.message}"
+        end
+      end
       file_loaded(__FILE__)
     end
   end

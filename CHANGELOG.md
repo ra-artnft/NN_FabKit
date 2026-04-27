@@ -2,6 +2,27 @@
 
 Формат — по [Keep a Changelog](https://keepachangelog.com/ru/1.1.0/). Версии монорепо независимы от версии плагина; версия плагина живёт в `plugin-sketchup/src/nn_fabkit/version.rb`.
 
+## [v0.0.33] — 2026-04-27
+
+### Fixed (Cut tilt direction restoration on opposite end)
+- **Плагин 0.11.10 → 0.11.11** — feedback: при apply mitre на втором конце трубы (когда первый уже cut) первый cut «flip'ался» в обратную сторону. Причина: `rebuild_with_cut` делает `RectTube.build` (clear+rebuild perpendicular tube), потом восстанавливает cut на opposite end. Но direction (tilt_dir_local) cut'а **не сохранялся** в attribute_dictionary — restoration использовал hardcoded default `(0, 1, 0)`, что часто не совпадало с оригинальным direction → видимый flip первого cut'а.
+- В [attr_dict.rb](plugin-sketchup/src/nn_fabkit/metalfab/attr_dict.rb) `read_rect_tube_params` читает 4 новых поля `cut_z0_tilt_x/y, cut_zL_tilt_x/y` (default `(0, 1)` для backward compat с v0.11.10 definitions).
+- В [rect_tube_mitre.rb](plugin-sketchup/src/nn_fabkit/metalfab/profile_generator/rect_tube_mitre.rb) `rebuild_with_cut` теперь:
+  - Читает `existing_z0_tilt`, `existing_zL_tilt` из params до clear
+  - Restoration на opposite end использует saved tilt (не default)
+  - В конце записывает `cut_z*_tilt_x/y` для **обоих** ends (текущего apply + сохранённого opposite)
+- Verified через MCP: frame из 4 труб → последовательный apply 4 corners по часовой стрелке. После каждого corner проверяется state всех 4 труб: `zL_tilt_y` остаётся постоянным от corner до corner, никаких flip'ов.
+
+### Added (MCP-сервер auto-start при загрузке плагина)
+- **Плагин 0.11.10 → 0.11.11** — feedback: MCP сервер сам должен стартовать после launch SketchUp без manual click в menu.
+- В [main.rb](plugin-sketchup/src/nn_fabkit/main.rb) после `Toolbar.register!` добавлен `UI.start_timer(2.0, false) { Mcp.start }` — 2s grace period после plugin load чтобы SU успел инициализироваться, потом MCP server starts.
+- Если порт 9876 занят (другой SU instance) — log error, SU не падает. Manual control остаётся через menu Extensions → NN FabKit → MCP сервер → Запустить/Остановить.
+
+### Modified
+- `plugin-sketchup/src/nn_fabkit/metalfab/attr_dict.rb` — `read_rect_tube_params` возвращает `cut_z*_tilt_x/y`.
+- `plugin-sketchup/src/nn_fabkit/metalfab/profile_generator/rect_tube_mitre.rb` — `rebuild_with_cut` сохраняет/restore'ит tilts.
+- `plugin-sketchup/src/nn_fabkit/main.rb` — MCP auto-start на plugin load.
+
 ## [v0.0.32] — 2026-04-27
 
 ### Fixed (FabKit CAD: tilt direction для произвольных end_axis)
