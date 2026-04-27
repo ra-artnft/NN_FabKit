@@ -140,15 +140,36 @@ module NN
           end
 
           if tubes[0].definition.entityID == tubes[1].definition.entityID
-            @state = :same_definition
-            @message = "FabKit CAD: 2 трубы используют один definition (копии). Не поддерживается."
             puts "[FabKitCadTool] same definition (copies)"
-            ::UI.messagebox(
-              "Эти 2 трубы — копии одного definition. Mitre на копии нарушит обе. " \
-              "Сделай Make Unique (правый клик → Make Unique) на одной из них."
+            # Determine which tube был создан позднее (выше persistent_id) и
+            # предложить сделать на нём Make Unique. Persistent_id монотонно
+            # возрастает в порядке создания entity в SU.
+            later = tubes.max_by(&:persistent_id)
+            earlier = tubes.find { |t| t.persistent_id != later.persistent_id }
+            answer = ::UI.messagebox(
+              "Эти 2 трубы — копии одного definition «#{tubes[0].definition.name}». " \
+              "Mitre на копии нарушит обе.\n\n" \
+              "Сделать Make Unique для более поздней (created позднее)?\n" \
+              "→ ОК: автоматически делается unique у trubы (pid=#{later.persistent_id})\n" \
+              "    после чего FabKit CAD продолжит работу.\n" \
+              "→ Cancel: tool отменяется, сделай Make Unique вручную.",
+              MB_OKCANCEL
             )
-            ::Sketchup.active_model.select_tool(nil)
-            return
+            if answer == IDOK
+              ::Sketchup.active_model.start_operation("Make Unique для FabKit CAD", true, false, false)
+              later.make_unique
+              ::Sketchup.active_model.commit_operation
+              puts "[FabKitCadTool] made unique tube pid=#{later.persistent_id} → new def name=#{later.definition.name}"
+              # Re-analyze: теперь definitions разные, продолжаем normal flow
+              # (recursive call безопасный — после make_unique больше не same_definition)
+              analyze_selection
+              return
+            else
+              @state = :same_definition
+              @message = "FabKit CAD: отмена — нужен Make Unique вручную"
+              ::Sketchup.active_model.select_tool(nil)
+              return
+            end
           end
 
           @state = :preview_ready
@@ -237,9 +258,11 @@ module NN
           trim_a = compute_trim(tube_a, best[:end_a], closest[0])
           trim_b = compute_trim(tube_b, best[:end_b], closest[1])
 
-          # Tilt direction для каждой трубы — TO другой трубы (в local coords)
-          tilt_a = compute_tilt_dir(tube_a, tube_b, best[:end_a])
-          tilt_b = compute_tilt_dir(tube_b, tube_a, best[:end_b])
+          # Tilt direction для каждой трубы — TO body другой трубы (в local coords).
+          # Передаём end_data of OTHER tube (не self) — нужен joint endpoint
+          # other tube'а, чтобы правильно вычислить вектор «от joint к телу other».
+          tilt_a = compute_tilt_dir(tube_a, tube_b, best[:end_b])
+          tilt_b = compute_tilt_dir(tube_b, tube_a, best[:end_a])
 
           {
             tube_a: tube_a, tube_b: tube_b,
@@ -284,34 +307,33 @@ module NN
           Geom::Vector3d.new(0, 0, 1).transform(instance.transformation).normalize
         end
 
-        # Tilt direction для tube_self в его local coords:
-        # вектор от joint в направлении другой трубы, проектированный
-        # на cross-section plane (XY local).
-        def compute_tilt_dir(tube_self, tube_other, end_data)
-          # Вектор в world: от joint_endpoint_self к остальной части tube_other
-          other_axis_world = tube_axis_world(tube_other)
-          # Convert в local coords tube_self
-          inv = tube_self.transformation.inverse
-          other_axis_local = other_axis_world.transform(inv).normalize
+        # Tilt direction для tube_self в его local coords (XY plane):
+        # explicit вектор «AWAY from body of OTHER tube» — toward OUTER corner L.
+        # Long side mitre extends в direction outer corner (где обе трубы дальше
+        # всего от joint), short side — в inner corner.
+        #
+        # Геометрически: vector от far_endpoint(other) к joint_endpoint(other),
+        # projected в local self's cross-section plane. Не зависит от axis sign
+        # convention'ов — работает для любых end_axis комбинаций.
+        #
+        # end_data_other — endpoint of tube_other который при joint.
+        def compute_tilt_dir(tube_self, tube_other, end_data_other)
+          ends_other = tube_endpoints(tube_other)
+          far_other = ends_other.find { |e| e[:end_axis] != end_data_other[:end_axis] }
+          # vector AWAY from body (joint - far): от body OTHER tube наружу
+          to_outer_world = end_data_other[:point] - far_other[:point]
 
-          # Project на XY plane (z=0) — это направление в cross-section
-          proj = Geom::Vector3d.new(other_axis_local.x, other_axis_local.y, 0)
+          # Convert в local coords tube_self (vector#transform применяет только
+          # rotation часть, translation игнорируется)
+          inv = tube_self.transformation.inverse
+          to_outer_local = to_outer_world.transform(inv)
+
+          # Project на cross-section plane (XY local of tube_self)
+          proj = Geom::Vector3d.new(to_outer_local.x, to_outer_local.y, 0)
           if proj.length < 1.0e-6
-            # Параллельные оси (z direction совпадает) — fallback на +Y
+            # Оси параллельны (other tube collinear self) — fallback +Y
             return Geom::Vector3d.new(0, 1, 0)
           end
-
-          # Sign: long side mitre должна faceть TO другой трубы. Если other tube
-          # extends в +Y direction от joint, то long side mitre тоже +Y.
-          # other_axis_local пока — direction оси other; нужно проверить, в какую
-          # сторону other tube extends ОТ joint point.
-          # Joint point близок к одному концу tube_other (best[:end_b]).
-          # Direction FROM joint TO другая часть tube_other = -end_axis_sign * other_axis_local
-          # (если end_axis_other == +1 (joint at +Z end), то tube extends в -Z direction
-          # от joint → проекция тоже идёт в обратную сторону)
-          # Pour simplicity: возьмём direction которая не совпадает с self axis:
-          # просто proj.normalize. Sign verified visually.
-
           proj.normalize
         end
 

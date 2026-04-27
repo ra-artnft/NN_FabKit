@@ -2,6 +2,20 @@
 
 Формат — по [Keep a Changelog](https://keepachangelog.com/ru/1.1.0/). Версии монорепо независимы от версии плагина; версия плагина живёт в `plugin-sketchup/src/nn_fabkit/version.rb`.
 
+## [v0.0.32] — 2026-04-27
+
+### Fixed (FabKit CAD: tilt direction для произвольных end_axis)
+- **Плагин 0.11.9 → 0.11.10** — на frame из 4 труб 1-2 cuts работали, 3-4 cuts «отходили» — user компенсировал ручным rotate трубы. Корень: v0.11.2 simple `compute_tilt_dir` использовал `tube_axis_world(other)` без учёта end_axis_other — direction правильная только при joint at z=length end of OTHER tube. Для z=0 end (что бывает в 4-tube frame с разными orientation'ами труб) — wrong sign.
+- В [fabkit_cad_tool.rb:286](plugin-sketchup/src/nn_fabkit/metalfab/tools/fabkit_cad_tool.rb#L286) `compute_tilt_dir` переписан через explicit geometric vector `end_data_other.point − far_endpoint(other)` — это direction «away from body of other tube» = toward outer corner L. Long side mitre всегда extends в outer corner direction. Не зависит от end_axis sign — работает для всех 4 corner типов в frame.
+- В `find_joint` исправлены вызовы — передаётся `end_data` of OTHER tube (не self), как ожидает функция: `tilt_a = compute_tilt_dir(tube_a, tube_b, best[:end_b])`.
+
+### Added (Make Unique button при detection same-definition)
+- При активации FabKit CAD с 2 selected трубами одной definition (копии) теперь показывается `MB_OKCANCEL` диалог: «Сделать Make Unique для более поздней (created позднее)?». ОК → автоматически делается unique у трубы с большим `persistent_id` (created позднее), FabKit CAD продолжает работу с двумя независимыми definitions. Cancel → отмена tool.
+- Раньше: `messagebox` с OK единственной опцией «Сделай Make Unique вручную» — пользователь вынужден закрыть tool, в outliner делать make_unique, заново активировать tool.
+
+### Modified
+- `plugin-sketchup/src/nn_fabkit/metalfab/tools/fabkit_cad_tool.rb` — `compute_tilt_dir` переписан, `find_joint` calls обновлены, `analyze_selection` same_definition branch с Make Unique логикой.
+
 ## [v0.0.31] — 2026-04-27
 
 ### Added (snap к bbox-углам компонента)
