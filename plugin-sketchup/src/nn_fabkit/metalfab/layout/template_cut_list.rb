@@ -65,14 +65,20 @@ module NN
           { key: :right, label: "Сбоку (справа)", col: 1, row: 1, std_view: :right }
         ].freeze
 
+        # Колонки cut-list:
+        #   Длина — длина ОДНОЙ детали (после mitre/trim). Дает прозрачную
+        #     спецификацию: «4 шт по 1350 мм», а не только Σ.
+        #   Кол-во × Длина = Σ Длина.
+        #   Группировка: typesize × length_per_piece (с округлением до 1мм).
         CUT_LIST = {
           x: 10, y: 205, header_h: 8, row_h: 6,
           cols: [
-            ["№",          10],
-            ["Типоразмер", 35],
-            ["ГОСТ",       35],
-            ["Сталь",      20],
-            ["Кол-во, шт", 22],
+            ["№",           8],
+            ["Типоразмер", 28],
+            ["ГОСТ",       28],
+            ["Сталь",      18],
+            ["Длина, мм",  22],
+            ["Кол-во, шт", 18],
             ["Σ Длина, мм",30],
             ["Σ Масса, кг",38]
           ].freeze
@@ -241,14 +247,16 @@ module NN
           end
 
           bounds = model.bounds
+          ab = axis_bbox_mm(model)  # габарит по осям (без толщины сечения)
 
           VIEWPORTS.each do |vp|
             x = VIEWPORT_AREA_X + vp[:col] * (VP_W + VP_GAP_X)
             y = VIEWPORT_AREA_Y + vp[:row] * (VP_H + VP_LABEL_H + VP_GAP_Y) + VP_LABEL_H
             label_y = y - VP_LABEL_H
 
-            # Label НАД viewport
-            add_text_center(doc, page, layer, x, label_y, VP_W, VP_LABEL_H, vp[:label])
+            # Label НАД viewport (с размерами по осям если применимо)
+            label = augment_label(vp, ab)
+            add_text_center(doc, page, layer, x, label_y, VP_W, VP_LABEL_H, label)
             # Border вокруг viewport
             add_rect(doc, page, layer, x, y, VP_W, VP_H)
 
@@ -257,16 +265,11 @@ module NN
               Geom::Bounds2d.new(x.mm, y.mm, VP_W.mm, VP_H.mm)
             )
             sm.preserve_scale_on_resize = true
-            # Чистый белый фон вместо SU sky/ground — плоские детали
-            # (рамы, листы) в front/right views иначе выглядят как линия
-            # на фоне неба/земли.
             begin
               sm.display_background = false
             rescue StandardError => _
             end
 
-            # Установить standard view (Layout сам отрисует ortho/iso —
-            # не зависит от .skp scenes).
             std = STD_VIEW_MAP[vp[:std_view]]
             begin
               sm.view = std
@@ -274,7 +277,6 @@ module NN
               puts "[LayoutGen] failed sm.view = #{std}: #{e.message}"
             end
 
-            # Auto-fit scale под bounds модели
             scale = fit_scale(vp[:std_view], bounds, VP_W, VP_H)
             begin
               sm.scale = scale
@@ -284,6 +286,32 @@ module NN
 
             doc.add_entity(sm, layer, page)
             sm.render
+          end
+        end
+
+        # Дополнить label viewport-а размерами по осям, если bbox известен.
+        # «Сверху»  → ширина × глубина (XY plane — план рамы)
+        # «Спереди» → ширина × высота (XZ plane)
+        # «Сбоку»   → глубина × высота (YZ plane)
+        # «Изометрия» — без размеров.
+        def augment_label(vp, ab)
+          return vp[:label] if ab.nil?
+          dims = case vp[:std_view]
+                 when :top   then [ab[:width],  ab[:depth]]
+                 when :front then [ab[:width],  ab[:height]]
+                 when :right then [ab[:depth],  ab[:height]]
+                 else nil
+                 end
+          return vp[:label] unless dims
+          # Если одна из осей нулевая (плоская рама) — show только non-zero.
+          a, b = dims
+          if a > 0 && b > 0
+            "#{vp[:label]} (#{a} × #{b} мм)"
+          elsif a > 0 || b > 0
+            d = [a, b].max
+            "#{vp[:label]} (#{d} мм)"
+          else
+            vp[:label]
           end
         end
 
@@ -304,17 +332,24 @@ module NN
           end
 
           totals = { count: 0, length_mm: 0.0, mass_kg: 0.0 }
-          groups.each_with_index do |(typesize, data), idx|
+          groups.each_with_index do |(_key, data), idx|
             y = cl[:y] + cl[:header_h] + idx * cl[:row_h]
-            cnt = data[:items].size
-            sum_len = data[:items].sum
+            cnt = data[:count]
+            len_per_piece = data[:length_mm].to_f
+            sum_len = len_per_piece * cnt
             sum_mass = (data[:mass_per_m_kg] || 0).to_f * (sum_len / 1000.0)
-            totals[:count] += cnt
+            totals[:count]     += cnt
             totals[:length_mm] += sum_len
-            totals[:mass_kg] += sum_mass
+            totals[:mass_kg]   += sum_mass
             values = [
-              (idx + 1).to_s, typesize, data[:gost].to_s, data[:steel].to_s,
-              cnt.to_s, sum_len.round(0).to_s, format("%.2f", sum_mass)
+              (idx + 1).to_s,
+              data[:typesize].to_s,
+              data[:gost].to_s,
+              data[:steel].to_s,
+              len_per_piece.round(0).to_s,
+              cnt.to_s,
+              sum_len.round(0).to_s,
+              format("%.2f", sum_mass)
             ]
             x_acc = cl[:x]
             cl[:cols].each_with_index do |(_, w), ci|
@@ -327,7 +362,7 @@ module NN
           y_total = cl[:y] + cl[:header_h] + groups.size * cl[:row_h]
           add_rect(doc, page, layer, cl[:x], y_total, total_w, cl[:row_h])
           total_values = [
-            "", "ИТОГО", "", "",
+            "", "ИТОГО", "", "", "",
             totals[:count].to_s,
             totals[:length_mm].round(0).to_s,
             format("%.2f", totals[:mass_kg])
@@ -344,26 +379,68 @@ module NN
           groups = group_rect_tubes(model)
           totals = { count: 0, length_mm: 0.0, mass_kg: 0.0 }
           groups.each do |_, d|
-            totals[:count]     += d[:items].size
-            totals[:length_mm] += d[:items].sum
-            totals[:mass_kg]   += (d[:mass_per_m_kg] || 0).to_f * (d[:items].sum / 1000.0)
+            sum_len = d[:length_mm].to_f * d[:count]
+            totals[:count]     += d[:count]
+            totals[:length_mm] += sum_len
+            totals[:mass_kg]   += (d[:mass_per_m_kg] || 0).to_f * (sum_len / 1000.0)
           end
           [groups.size, totals]
         end
 
+        # Bounding box по ОСЯМ всех rect_tube инстансов (in mm).
+        # Это даёт «чистый» габарит конструкции (не включая толщину сечения):
+        # для рамы 1350x1350 из трубы 40 — bbox по осям = 1350x1350 (а не 1390).
+        # Используется для подписей размеров на viewport'ах.
+        def axis_bbox_mm(model)
+          pts = []
+          model.entities.grep(::Sketchup::ComponentInstance).each do |inst|
+            attrs = inst.definition.attribute_dictionary("nn_metalfab")
+            next unless attrs && attrs["profile_type"] == "rect_tube"
+            length_mm = attrs["length_mm"].to_f
+            tr = inst.transformation
+            pts << Geom::Point3d.new(0, 0, 0).transform(tr)
+            pts << Geom::Point3d.new(0, 0, length_mm.mm).transform(tr)
+          end
+          return nil if pts.empty?
+          xs = pts.map { |p| p.x.to_mm }
+          ys = pts.map { |p| p.y.to_mm }
+          zs = pts.map { |p| p.z.to_mm }
+          {
+            width:  (xs.max - xs.min).round(0),
+            depth:  (ys.max - ys.min).round(0),
+            height: (zs.max - zs.min).round(0)
+          }
+        end
+
+        # Группирует rect_tube инстансы по паре (typesize × length_mm) — чтобы
+        # каждая комбинация «сечение и длина одной детали» = одна строка
+        # cut-list. Раньше группировали только по typesize: «4 шт» в одной
+        # строке без длины каждой штуки. Теперь — «4 шт × 1350 мм = 5400 мм».
+        # Длину округляем до 1 мм — типичная production-точность.
         def group_rect_tubes(model)
-          groups = Hash.new { |h, k| h[k] = { items: [], gost: nil, mass_per_m_kg: nil, steel: nil } }
+          groups = Hash.new do |h, k|
+            h[k] = {
+              count: 0, typesize: nil, length_mm: nil,
+              gost: nil, mass_per_m_kg: nil, steel: nil
+            }
+          end
           model.entities.grep(::Sketchup::ComponentInstance).each do |inst|
             attrs = inst.definition.attribute_dictionary("nn_metalfab")
             next unless attrs
             next unless attrs["profile_type"] == "rect_tube"
-            g = groups[attrs["typesize"].to_s]
-            g[:items] << attrs["length_mm"].to_f
+            typesize = attrs["typesize"].to_s
+            length = attrs["length_mm"].to_f.round(0)
+            key = "#{typesize}|#{length}"
+            g = groups[key]
+            g[:count]    += 1
+            g[:typesize] = typesize
+            g[:length_mm] = length
             g[:gost] ||= attrs["gost"]
             g[:mass_per_m_kg] ||= attrs["mass_per_m_kg"]
             g[:steel] ||= attrs["steel_grade"]
           end
-          groups
+          # Сортируем для стабильного порядка: typesize, потом длина (по убыванию).
+          groups.sort_by { |_, d| [d[:typesize].to_s, -d[:length_mm].to_i] }.to_h
         end
 
         # ----- Geometry helpers -----

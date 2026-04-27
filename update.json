@@ -1,5 +1,5 @@
 {
-  "latest_version": "0.12.1",
-  "rbz_url": "https://github.com/ra-artnft/NN_FabKit/releases/download/v0.12.1/nn_fabkit-0.12.1.rbz",
-  "release_notes": "v0.12.1 — patch: исправлен updater UI.\n\nВ v0.12.0 release notes были длинные, и UI.messagebox растягивался за экран — кнопки YES/NO уходили вниз, нельзя было подтвердить установку.\n\nТеперь release notes truncate'ются до 6 строк / 400 символов в messagebox + ссылка на полный changelog на GitHub. Кнопки видны всегда."
+  "latest_version": "0.12.2",
+  "rbz_url": "https://github.com/ra-artnft/NN_FabKit/releases/download/v0.12.2/nn_fabkit-0.12.2.rbz",
+  "release_notes": "v0.12.2 — cut-list по деталям + размеры на viewport.\n\nCut-list: добавлена колонка «Длина, мм» (длина одной детали). Группировка теперь по паре (типоразмер × длина), а не только по типоразмеру. Видно «4 шт × 1350 мм = 5400 мм», а не только Σ=5400.\n\nViewport labels дополнены размерами по осям: «Сверху (1350 × 1350 мм)», «Спереди (1350 мм)», «Сбоку (1350 мм)». Изометрия без размеров. Размеры авто-detect'ятся из axis bbox tube-инстансов (без толщины сечения).\n\nПолный changelog: https://github.com/ra-artnft/NN_FabKit/releases"
 }
