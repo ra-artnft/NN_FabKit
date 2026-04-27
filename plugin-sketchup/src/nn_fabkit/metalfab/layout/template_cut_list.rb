@@ -274,6 +274,12 @@ module NN
               sm.display_background = false
             rescue StandardError => _
             end
+            # ortho-проекция обязательна — model_to_paper_point бросает
+            # «view must be orthographic» иначе.
+            begin
+              sm.perspective = false
+            rescue StandardError => _
+            end
 
             std = STD_VIEW_MAP[vp[:std_view]]
             begin
@@ -292,61 +298,114 @@ module NN
             doc.add_entity(sm, layer, page)
             sm.render
 
-            # Размерные линии вокруг viewport (горизонтальный + опционально
-            # вертикальный для "Сверху" — там две значимые оси конструкции).
-            draw_viewport_dims(doc, page, layer, vp, x, y, ab)
+            # Размерные линии ВНУТРИ viewport, прикреплённые к paper-проекции
+            # axis intersections рамы (нижняя/правая/левая грани в зависимости
+            # от проекции). Размер позиционируется на самой детали,
+            # не под viewport-ом.
+            draw_viewport_dims(doc, page, layer, vp, sm, ab)
           end
         end
 
-        # Размерные линии вокруг viewport: горизонтальная (под) + опциональная
-        # вертикальная (справа) для top view, где значимы обе оси.
-        def draw_viewport_dims(doc, page, layer, vp, vp_x, vp_y, ab)
+        # Размерные линии ВНУТРИ viewport, привязанные к 3D-точкам модели через
+        # `Layout::SketchUpModel#model_to_paper_point`. Размер расположен на
+        # самой детали (под нижней гранью / справа от правой), не под viewport-ом.
+        # Реализация — через тонкие rectangles + text, не Layout::LinearDimension
+        # (его custom_text не сохраняется, всегда показывает paper distance в дюймах).
+        #
+        # Требует sm.perspective = false — иначе model_to_paper_point бросает
+        # «view must be orthographic».
+        def draw_viewport_dims(doc, page, layer, vp, sm, ab)
           return if ab.nil?
 
-          # Главный (горизонтальный) размер для проекции
-          h_dim = case vp[:std_view]
-                  when :top   then ab[:width]
-                  when :front then ab[:width]
-                  when :right then ab[:depth]
-                  when :iso   then [ab[:width], ab[:depth]].max
-                  end
-          if h_dim && h_dim > 0
-            draw_dim_horizontal(doc, page, layer, vp_x + 3, vp_x + VP_W - 3,
-                                vp_y + VP_H + 3.5, "#{h_dim}")
-          end
+          # Точки модели для главного размера (по нижней грани оси проекции).
+          # Для :top рамы: bottom edge от (0,0,0) до (width,0,0).
+          # Для :front: bottom edge XZ.
+          # Для :right: bottom edge YZ → проецируется на right face (x=width).
+          dim_specs = case vp[:std_view]
+                      when :top
+                        # Нижняя грань (Y=0): width; правая грань (X=width): depth
+                        bottom_left  = Geom::Point3d.new(0,             0,             0)
+                        bottom_right = Geom::Point3d.new(ab[:width].mm, 0,             0)
+                        top_right    = Geom::Point3d.new(ab[:width].mm, ab[:depth].mm, 0)
+                        [
+                          { p1: bottom_left, p2: bottom_right, label: "#{ab[:width]} мм", side: :below },
+                          { p1: bottom_right, p2: top_right,   label: "#{ab[:depth]} мм", side: :right }
+                        ]
+                      when :front
+                        # Нижняя грань (Z=0): width
+                        bl = Geom::Point3d.new(0,             0, 0)
+                        br = Geom::Point3d.new(ab[:width].mm, 0, 0)
+                        [{ p1: bl, p2: br, label: "#{ab[:width]} мм", side: :below }]
+                      when :right
+                        # Нижняя грань (Z=0): depth (Y direction)
+                        bl = Geom::Point3d.new(ab[:width].mm, 0,             0)
+                        br = Geom::Point3d.new(ab[:width].mm, ab[:depth].mm, 0)
+                        [{ p1: bl, p2: br, label: "#{ab[:depth]} мм", side: :below }]
+                      when :iso
+                        # Iso — пропускаем, сложно правильно расположить
+                        []
+                      else
+                        []
+                      end
 
-          # Вертикальный размер только для :top — там обе оси габариты рамы.
-          # Для :front/:right вторая ось = высота трубы (40mm) — мелко на
-          # paper, не рисуем (будет в подписи).
-          if vp[:std_view] == :top && ab[:depth] > 0
-            # Справа viewport: только если есть место (col=0 — точно есть; col=1 — впритык).
-            dim_x = vp_x + VP_W + 2.5
-            # У col=1 (right column) page right margin = 200; нужен ~6mm под текст.
-            page_right = PAGE_W_MM - MARGIN_MM
-            if dim_x + 5 <= page_right
-              draw_dim_vertical(doc, page, layer, dim_x,
-                                vp_y + 3, vp_y + VP_H - 3, "#{ab[:depth]}")
-            end
+          dim_specs.each do |spec|
+            p1_paper = sm.model_to_paper_point(spec[:p1])
+            p2_paper = sm.model_to_paper_point(spec[:p2])
+            draw_dim_paper(doc, page, layer, p1_paper, p2_paper, spec[:side], spec[:label])
           end
+        rescue StandardError => e
+          puts "[LayoutGen] draw_viewport_dims failed for #{vp[:key]}: #{e.class}: #{e.message}"
         end
 
-        def draw_dim_horizontal(doc, page, layer, x1, x2, line_y, label)
-          add_rect(doc, page, layer, x1, line_y, x2 - x1, DIM_LINE_W_MM)
-          add_rect(doc, page, layer, x1,                 line_y - DIM_TICK_HALF_MM, DIM_LINE_W_MM, DIM_TICK_HALF_MM * 2)
-          add_rect(doc, page, layer, x2 - DIM_LINE_W_MM, line_y - DIM_TICK_HALF_MM, DIM_LINE_W_MM, DIM_TICK_HALF_MM * 2)
-          text_w = 24
-          cx = (x1 + x2) / 2.0
-          add_text_center(doc, page, layer, cx - text_w / 2.0, line_y - 3.5, text_w, 3, "#{label} мм")
-        end
+        # Рисует размер между двумя paper-points, со смещением (offset perpendicular).
+        # side: :below — линия чуть ниже p1-p2; :right — правее; :above; :left.
+        # Все p1/p2 должны быть на одной горизонтальной/вертикальной линии для simple cases.
+        def draw_dim_paper(doc, page, layer, p1, p2, side, label_text)
+          dx = p2.x - p1.x
+          dy = p2.y - p1.y
+          horizontal = dx.abs >= dy.abs
 
-        def draw_dim_vertical(doc, page, layer, line_x, y1, y2, label)
-          add_rect(doc, page, layer, line_x, y1, DIM_LINE_W_MM, y2 - y1)
-          add_rect(doc, page, layer, line_x - DIM_TICK_HALF_MM, y1,                 DIM_TICK_HALF_MM * 2, DIM_LINE_W_MM)
-          add_rect(doc, page, layer, line_x - DIM_TICK_HALF_MM, y2 - DIM_LINE_W_MM, DIM_TICK_HALF_MM * 2, DIM_LINE_W_MM)
-          text_w = 12
-          text_h = 3
-          cy = (y1 + y2) / 2.0
-          add_text_center(doc, page, layer, line_x + 0.5, cy - text_h / 2.0, text_w, text_h, "#{label} мм")
+          offset_mm = 4.0
+          tick_mm = DIM_TICK_HALF_MM
+
+          if horizontal
+            # Горизонтальная линия — y фиксирован
+            line_y_in = ([p1.y, p2.y].max + offset_mm.mm)  # под edge модели в paper
+            # paper Y растёт вниз, "below" = больше Y
+            x1 = p1.x; x2 = p2.x
+            x1, x2 = x2, x1 if x1 > x2
+
+            line_y_mm = line_y_in.to_mm
+            x1_mm = x1.to_mm; x2_mm = x2.to_mm
+            add_rect(doc, page, layer, x1_mm, line_y_mm, x2_mm - x1_mm, DIM_LINE_W_MM)
+            add_rect(doc, page, layer, x1_mm,                 line_y_mm - tick_mm, DIM_LINE_W_MM, tick_mm * 2)
+            add_rect(doc, page, layer, x2_mm - DIM_LINE_W_MM, line_y_mm - tick_mm, DIM_LINE_W_MM, tick_mm * 2)
+            # leader lines от модели до dim line
+            add_rect(doc, page, layer, x1_mm, p1.y.to_mm, DIM_LINE_W_MM, line_y_mm - p1.y.to_mm)
+            add_rect(doc, page, layer, x2_mm - DIM_LINE_W_MM, p2.y.to_mm, DIM_LINE_W_MM, line_y_mm - p2.y.to_mm)
+            # Text над линией
+            text_w = 22
+            text_h = 3
+            cx_mm = (x1_mm + x2_mm) / 2.0
+            add_text_center(doc, page, layer, cx_mm - text_w / 2.0, line_y_mm - 3.5, text_w, text_h, label_text)
+          else
+            # Вертикальная линия — x фиксирован
+            line_x_in = (side == :left ? [p1.x, p2.x].min - offset_mm.mm : [p1.x, p2.x].max + offset_mm.mm)
+            y1 = p1.y; y2 = p2.y
+            y1, y2 = y2, y1 if y1 > y2
+            line_x_mm = line_x_in.to_mm
+            y1_mm = y1.to_mm; y2_mm = y2.to_mm
+            add_rect(doc, page, layer, line_x_mm, y1_mm, DIM_LINE_W_MM, y2_mm - y1_mm)
+            add_rect(doc, page, layer, line_x_mm - tick_mm, y1_mm,                 tick_mm * 2, DIM_LINE_W_MM)
+            add_rect(doc, page, layer, line_x_mm - tick_mm, y2_mm - DIM_LINE_W_MM, tick_mm * 2, DIM_LINE_W_MM)
+            # leader lines от модели до dim line
+            add_rect(doc, page, layer, p1.x.to_mm, y1_mm, line_x_mm - p1.x.to_mm, DIM_LINE_W_MM)
+            add_rect(doc, page, layer, p2.x.to_mm, y2_mm - DIM_LINE_W_MM, line_x_mm - p2.x.to_mm, DIM_LINE_W_MM)
+            text_w = 12
+            text_h = 3
+            cy_mm = (y1_mm + y2_mm) / 2.0
+            add_text_center(doc, page, layer, line_x_mm + 0.5, cy_mm - text_h / 2.0, text_w, text_h, label_text)
+          end
         end
 
         # Компактная подпись над viewport: только инфа о ДЕТАЛИ.

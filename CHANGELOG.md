@@ -2,6 +2,22 @@
 
 Формат — по [Keep a Changelog](https://keepachangelog.com/ru/1.1.0/). Версии монорепо независимы от версии плагина; версия плагина живёт в `plugin-sketchup/src/nn_fabkit/version.rb`.
 
+## [v0.0.40] — 2026-04-27
+
+### Fixed (LayOut: размеры прикреплены к детали, а не под viewport)
+
+- **Плагин 0.12.4 → 0.12.5** — feedback пользователя: «ты поставил размеры на окнах, а нам надо прям на самой детали эти размеры иметь».
+- Раньше (v0.12.4): размерная линия рисовалась снаружи viewport-а в page coords. Не зависела от модели — если двигать viewport, размер не следовал.
+- Теперь: размерная линия привязана к **3D-точкам модели** (axis intersections рамы) через `Layout::SketchUpModel#model_to_paper_point`. Положение на paper вычисляется проекцией модельных точек, и размер ложится **прямо на нижнюю/правую грань детали в viewport**.
+- Для «Сверху» — два размера (ширина по нижней грани + глубина по правой). Для «Спереди» / «Сбоку» — один размер по нижней грани. С засечками по краям + leader-линиями от грани модели до размерной линии (offset 4mm).
+- `sm.perspective = false` ставится на каждом viewport — `model_to_paper_point` бросает «view must be orthographic», если это не сделать (`Layout::SketchUpModel::TOP_VIEW` etc уже ortho-стандарт, но parallel_projection flag нужен явно).
+
+### Why not Layout::LinearDimension
+- Пробовал штатный `Layout::LinearDimension.new(p1, p2, offset)` + `custom_text = true` + `text.plain_text = "1350 мм"`. После `doc.add_entity` setter не sticks — `text.plain_text` возвращает paper-distance в дюймах (`"1.95\""`), `auto_scale = false` не помогает. Похоже на known limitation — `custom_text` flag сохраняется, но measurement каждый раз пересчитывается из paper distance. Решил рисовать через тонкие rectangles + FormattedText сам, полностью под контролем.
+
+### Modified
+- `plugin-sketchup/src/nn_fabkit/metalfab/layout/template_cut_list.rb` — `draw_viewport_dims` (теперь принимает `sm` вместо paper coords, projects 3D points), новая `draw_dim_paper`, `sm.perspective = false` в `draw_viewports`.
+
 ## [v0.0.39] — 2026-04-27
 
 ### Added (LayOut: размерные линии в каждом viewport + компактные подписи)

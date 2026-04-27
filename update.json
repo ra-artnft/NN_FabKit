@@ -1,5 +1,5 @@
 {
-  "latest_version": "0.12.4",
-  "rbz_url": "https://github.com/ra-artnft/NN_FabKit/releases/download/v0.12.4/nn_fabkit-0.12.4.rbz",
-  "release_notes": "v0.12.4 — размерные линии и компактные подписи viewport.\n\nПод каждым viewport (Изо/Сверху/Спереди/Сбоку) рисуется размерная линия с засечками + число в мм — главный габарит конструкции для этой проекции (ширина для Изо/Сверху/Спереди, глубина для Сбоку). Для «Сверху» при наличии места справа добавляется и вертикальный размер (глубина).\n\nПодписи viewport стали компактными: «Сверху · 40x40x2 · L=1350 мм» — раньше длинный текст наезжал на соседний viewport.\n\nПолный changelog: https://github.com/ra-artnft/NN_FabKit/releases"
+  "latest_version": "0.12.5",
+  "rbz_url": "https://github.com/ra-artnft/NN_FabKit/releases/download/v0.12.5/nn_fabkit-0.12.5.rbz",
+  "release_notes": "v0.12.5 — размеры прикреплены к детали в каждом viewport.\n\nРазмерные линии теперь привязаны к 3D-точкам модели через Layout::SketchUpModel#model_to_paper_point, расположены прямо НА детали (под нижней гранью / справа от правой), не под viewport-ом отдельно.\n\nДля «Сверху» — два размера (ширина по нижней + глубина справа). Для «Спереди»/«Сбоку» — один размер по нижней грани. С засечками + leader-линиями от модели.\n\nПолный changelog: https://github.com/ra-artnft/NN_FabKit/releases"
 }
