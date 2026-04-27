@@ -7,11 +7,15 @@ module NN
       #
       # Workflow:
       #   1. Проверить что .skp сохранён (Layout::SketchUpModel читает с диска).
-      #   2. UI.savepanel — куда сохранить PDF (default — рядом с .skp,
-      #      имя `<basename>_cut_list.pdf`).
-      #   3. Сгенерировать .layout (рядом с PDF, тот же basename) + export PDF.
-      #   4. UI.messagebox со сводкой + предложить открыть.
+      #   2. Default папка — `<USER_HOME>/Documents/NN_FabKit/<basename>/`,
+      #      создаётся автоматически. Если уже сохраняли в эту папку —
+      #      используем её.
+      #   3. UI.savepanel — куда сохранить PDF.
+      #   4. Сгенерировать .layout (рядом с PDF, тот же basename) + export PDF.
+      #   5. UI.messagebox со сводкой + предложить открыть.
       module ExportLayoutPdf
+        DEFAULT_FOLDER_NAME = "NN_FabKit".freeze
+
         module_function
 
         def call
@@ -30,7 +34,7 @@ module NN
           end
 
           base = File.basename(model.path, ".*")
-          dir = File.dirname(model.path)
+          dir = ensure_default_folder(base)
           default_pdf_name = "#{base}_cut_list.pdf"
 
           pdf_path = ::UI.savepanel("Сохранить PDF cut-list", dir, default_pdf_name)
@@ -71,6 +75,26 @@ module NN
           if ::UI.messagebox(msg, MB_YESNO) == IDYES
             ::UI.openURL("file:///#{stats['pdf_path']}")
           end
+        end
+
+        # `<HOME>/Documents/NN_FabKit/<project_basename>/` — стабильное место
+        # для всех PDF/.layout одного проекта. Создаётся автоматически.
+        # Если есть переменная окружения USERPROFILE (Windows) — оттуда;
+        # иначе HOME (mac/linux).
+        def ensure_default_folder(project_base)
+          home = ENV["USERPROFILE"] || ENV["HOME"] || Dir.home
+          docs = File.join(home, "Documents")
+          docs = home unless File.directory?(docs)
+          fabkit = File.join(docs, DEFAULT_FOLDER_NAME)
+          project = File.join(fabkit, project_base)
+          begin
+            require "fileutils"
+            FileUtils.mkdir_p(project)
+          rescue StandardError => e
+            puts "[ExportLayoutPdf] mkdir_p(#{project}) failed: #{e.message}"
+            return docs  # fallback на Documents если NN_FabKit/ создать не удалось
+          end
+          project
         end
       end
     end

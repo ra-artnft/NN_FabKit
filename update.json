@@ -1,5 +1,5 @@
 {
-  "latest_version": "0.12.5",
-  "rbz_url": "https://github.com/ra-artnft/NN_FabKit/releases/download/v0.12.5/nn_fabkit-0.12.5.rbz",
-  "release_notes": "v0.12.5 — размеры прикреплены к детали в каждом viewport.\n\nРазмерные линии теперь привязаны к 3D-точкам модели через Layout::SketchUpModel#model_to_paper_point, расположены прямо НА детали (под нижней гранью / справа от правой), не под viewport-ом отдельно.\n\nДля «Сверху» — два размера (ширина по нижней + глубина справа). Для «Спереди»/«Сбоку» — один размер по нижней грани. С засечками + leader-линиями от модели.\n\nПолный changelog: https://github.com/ra-artnft/NN_FabKit/releases"
+  "latest_version": "0.12.6",
+  "rbz_url": "https://github.com/ra-artnft/NN_FabKit/releases/download/v0.12.6/nn_fabkit-0.12.6.rbz",
+  "release_notes": "v0.12.6 — выходные PDF в Documents/NN_FabKit/<проект>/ + размеры прикреплены к детали.\n\n1) Default папка для save savepanel — Documents/NN_FabKit/<имя_проекта>/, создаётся автоматически. Раньше PDF дефолтил рядом с .skp (часто на Desktop) — захламлялось рабочее место.\n\n2) Размерные линии теперь привязаны к 3D-точкам модели через Layout::SketchUpModel#model_to_paper_point — лежат прямо на нижней/правой грани детали внутри viewport, а не под viewport отдельно.\n\nПолный changelog: https://github.com/ra-artnft/NN_FabKit/releases"
 }

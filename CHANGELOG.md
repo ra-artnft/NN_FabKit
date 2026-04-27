@@ -2,6 +2,18 @@
 
 Формат — по [Keep a Changelog](https://keepachangelog.com/ru/1.1.0/). Версии монорепо независимы от версии плагина; версия плагина живёт в `plugin-sketchup/src/nn_fabkit/version.rb`.
 
+## [v0.0.41] — 2026-04-27
+
+### Changed (LayOut: PDF/.layout по умолчанию в Documents/NN_FabKit/, не на Desktop)
+
+- **Плагин 0.12.5 → 0.12.6** — feedback: «мне очень не нравится что ты сохраняешь это на рабочий стол просто так. Создадим папку.»
+- Раньше: `UI.savepanel` дефолтил в папку с .skp файлом (часто Desktop), savepanel показывал «куда сохранять PDF», но обычно user принимал default → файлы накапливались на Desktop.
+- Теперь: default папка — `<USER_HOME>/Documents/NN_FabKit/<basename_проекта>/`. Создаётся автоматически через `FileUtils.mkdir_p`. По одной папке на проект (`Рама_1350x1350.skp` → `Documents/NN_FabKit/Рама_1350x1350/`). Все PDF/.layout одного проекта — в одном месте, не в Desktop.
+- Если папка `Documents` не существует (нестандартный профиль) — fallback на `<USER_HOME>`. Если `mkdir_p` падает — fallback на `Documents` без подпапки.
+
+### Modified
+- `plugin-sketchup/src/nn_fabkit/metalfab/commands/export_layout_pdf.rb` — `ensure_default_folder(project_base)`, использование в `call` вместо `File.dirname(model.path)`.
+
 ## [v0.0.40] — 2026-04-27
 
 ### Fixed (LayOut: размеры прикреплены к детали, а не под viewport)
