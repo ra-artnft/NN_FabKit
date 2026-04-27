@@ -1,5 +1,5 @@
 {
-  "latest_version": "0.12.3",
-  "rbz_url": "https://github.com/ra-artnft/NN_FabKit/releases/download/v0.12.3/nn_fabkit-0.12.3.rbz",
-  "release_notes": "v0.12.3 — кнопка PDF cut-list в toolbar.\n\nДобавлена 4-я кнопка в верхнюю панель NN FabKit (рядом с Inspector / Создать трубу / FabKit CAD): «PDF cut-list» с иконкой страницы.\n\nКлик → savepanel → автоматический A4 чертёж + PDF + предложение открыть. Тот же flow что Extensions → NN FabKit → MetalFab → Создать PDF cut-list, но в один клик из toolbar.\n\nПолный changelog: https://github.com/ra-artnft/NN_FabKit/releases"
+  "latest_version": "0.12.4",
+  "rbz_url": "https://github.com/ra-artnft/NN_FabKit/releases/download/v0.12.4/nn_fabkit-0.12.4.rbz",
+  "release_notes": "v0.12.4 — размерные линии и компактные подписи viewport.\n\nПод каждым viewport (Изо/Сверху/Спереди/Сбоку) рисуется размерная линия с засечками + число в мм — главный габарит конструкции для этой проекции (ширина для Изо/Сверху/Спереди, глубина для Сбоку). Для «Сверху» при наличии места справа добавляется и вертикальный размер (глубина).\n\nПодписи viewport стали компактными: «Сверху · 40x40x2 · L=1350 мм» — раньше длинный текст наезжал на соседний viewport.\n\nПолный changelog: https://github.com/ra-artnft/NN_FabKit/releases"
 }

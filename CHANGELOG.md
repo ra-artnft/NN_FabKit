@@ -2,6 +2,25 @@
 
 Формат — по [Keep a Changelog](https://keepachangelog.com/ru/1.1.0/). Версии монорепо независимы от версии плагина; версия плагина живёт в `plugin-sketchup/src/nn_fabkit/version.rb`.
 
+## [v0.0.39] — 2026-04-27
+
+### Added (LayOut: размерные линии в каждом viewport + компактные подписи)
+
+- **Плагин 0.12.3 → 0.12.4** — feedback пользователя: «в каждом окошке должны быть размеры детали и самой конструкции».
+
+#### Размерные линии вокруг viewport
+- Под каждым ortho/iso viewport — горизонтальная **размерная линия** с засечками по краям и числом мм в центре над линией. Главный габарит конструкции для проекции (`ab[:width]` для top/front/iso, `ab[:depth]` для right).
+- Для **«Сверху»** дополнительно — вертикальная размерная линия справа (если есть место в page margin), показывает глубину рамы. Полезно для прямоугольных конструкций (для квадратной — обе оси одинаковые).
+- Helpers `draw_dim_horizontal`, `draw_dim_vertical` — рисуют через тонкие rectangles (line + 2 ticks). Не нативный `Layout::LinearDimension` — просто и предсказуемо в layout управление.
+- Layout viewport-области: `VP_H` 62.5 → **60 мм**, добавлено `DIM_AREA_H = 7 мм` под каждый viewport под размер; `VP_GAP_Y` 5 → 3 мм; `CUT_LIST.y` 205 → **215 мм** (сдвинут под расширенный viewport area).
+
+#### Компактные подписи viewport
+- Раньше: «Изометрия · конструкция 1350 × 1350 мм · деталь 40x40x2 · L=1350 мм» — текст не вмещался в 92.5 мм viewport, наезжал на соседний.
+- Стало: «Изометрия · 40x40x2 · L=1350 мм» — только информация о детали (трубе). Размеры конструкции дублируются в подписи не нужно — они на размерных линиях вокруг viewport.
+
+### Modified
+- `plugin-sketchup/src/nn_fabkit/metalfab/layout/template_cut_list.rb` — `draw_viewports` (вызов `draw_viewport_dims`), `draw_viewport_dims` + `draw_dim_horizontal/vertical` helpers, `augment_label` (минимум — только piece info), constants `VP_H`/`VP_GAP_Y`/`DIM_AREA_H`/`DIM_TICK_HALF_MM`/`DIM_LINE_W_MM`, `CUT_LIST.y`.
+
 ## [v0.0.38] — 2026-04-27
 
 ### Added (toolbar: кнопка PDF cut-list)

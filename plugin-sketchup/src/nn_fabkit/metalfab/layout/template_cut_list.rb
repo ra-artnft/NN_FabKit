@@ -38,16 +38,19 @@ module NN
         TITLE_BLOCK = { x: 100, y: 10, w: 100, h: 40, label_w: 22 }.freeze
         HEADER_BLOCK = { x: 100, y: 5, w: 100, h: 5 }.freeze
 
-        # 2×2 viewport grid в области (10, 60) .. (200, 195) = 190 × 135 мм.
-        # Каждая ячейка: viewport 92.5 × 62.5 + label-полоска 5mm над viewport'ом.
-        # Зазоры по 5mm между ячейками и сверху (под label).
+        # 2×2 viewport grid в области (10, 60) .. (200, 200) = 190 × 140 мм.
+        # Каждая ячейка: viewport 92.5 × 60 + label 5mm сверху + dim-area 7mm снизу.
+        # Зазоры между ячейками 3mm.
         VIEWPORT_AREA_X = 10
         VIEWPORT_AREA_Y = 55
         VP_W = 92.5
-        VP_H = 62.5
+        VP_H = 60
         VP_LABEL_H = 5
         VP_GAP_X = 5
-        VP_GAP_Y = 5
+        VP_GAP_Y = 3
+        DIM_AREA_H = 7   # 7mm под viewport под размерную линию (line + tick + label)
+        DIM_TICK_HALF_MM = 1.5
+        DIM_LINE_W_MM = 0.05  # тонкий rectangle = размерная линия
 
         # 4 viewport'а: Изометрия (основная), Сверху, Спереди, Сбоку.
         # Раскладка:
@@ -71,7 +74,7 @@ module NN
         #   Кол-во × Длина = Σ Длина.
         #   Группировка: typesize × length_per_piece (с округлением до 1мм).
         CUT_LIST = {
-          x: 10, y: 205, header_h: 8, row_h: 6,
+          x: 10, y: 215, header_h: 8, row_h: 6,
           cols: [
             ["№",           8],
             ["Типоразмер", 28],
@@ -247,15 +250,17 @@ module NN
           end
 
           bounds = model.bounds
-          ab = axis_bbox_mm(model)  # габарит по осям (без толщины сечения)
+          ab = axis_bbox_mm(model)
+          piece = piece_dims_mm(model)  # размер одной детали (труба сечение + длина)
 
           VIEWPORTS.each do |vp|
+            row_pitch = VP_LABEL_H + VP_H + DIM_AREA_H + VP_GAP_Y
             x = VIEWPORT_AREA_X + vp[:col] * (VP_W + VP_GAP_X)
-            y = VIEWPORT_AREA_Y + vp[:row] * (VP_H + VP_LABEL_H + VP_GAP_Y) + VP_LABEL_H
+            y = VIEWPORT_AREA_Y + vp[:row] * row_pitch + VP_LABEL_H
             label_y = y - VP_LABEL_H
 
-            # Label НАД viewport (с размерами по осям если применимо)
-            label = augment_label(vp, ab)
+            # Label НАД viewport (с размерами конструкции и сечением детали)
+            label = augment_label(vp, ab, piece)
             add_text_center(doc, page, layer, x, label_y, VP_W, VP_LABEL_H, label)
             # Border вокруг viewport
             add_rect(doc, page, layer, x, y, VP_W, VP_H)
@@ -286,32 +291,99 @@ module NN
 
             doc.add_entity(sm, layer, page)
             sm.render
+
+            # Размерные линии вокруг viewport (горизонтальный + опционально
+            # вертикальный для "Сверху" — там две значимые оси конструкции).
+            draw_viewport_dims(doc, page, layer, vp, x, y, ab)
           end
         end
 
-        # Дополнить label viewport-а размерами по осям, если bbox известен.
-        # «Сверху»  → ширина × глубина (XY plane — план рамы)
-        # «Спереди» → ширина × высота (XZ plane)
-        # «Сбоку»   → глубина × высота (YZ plane)
-        # «Изометрия» — без размеров.
-        def augment_label(vp, ab)
-          return vp[:label] if ab.nil?
-          dims = case vp[:std_view]
-                 when :top   then [ab[:width],  ab[:depth]]
-                 when :front then [ab[:width],  ab[:height]]
-                 when :right then [ab[:depth],  ab[:height]]
-                 else nil
-                 end
-          return vp[:label] unless dims
-          # Если одна из осей нулевая (плоская рама) — show только non-zero.
-          a, b = dims
+        # Размерные линии вокруг viewport: горизонтальная (под) + опциональная
+        # вертикальная (справа) для top view, где значимы обе оси.
+        def draw_viewport_dims(doc, page, layer, vp, vp_x, vp_y, ab)
+          return if ab.nil?
+
+          # Главный (горизонтальный) размер для проекции
+          h_dim = case vp[:std_view]
+                  when :top   then ab[:width]
+                  when :front then ab[:width]
+                  when :right then ab[:depth]
+                  when :iso   then [ab[:width], ab[:depth]].max
+                  end
+          if h_dim && h_dim > 0
+            draw_dim_horizontal(doc, page, layer, vp_x + 3, vp_x + VP_W - 3,
+                                vp_y + VP_H + 3.5, "#{h_dim}")
+          end
+
+          # Вертикальный размер только для :top — там обе оси габариты рамы.
+          # Для :front/:right вторая ось = высота трубы (40mm) — мелко на
+          # paper, не рисуем (будет в подписи).
+          if vp[:std_view] == :top && ab[:depth] > 0
+            # Справа viewport: только если есть место (col=0 — точно есть; col=1 — впритык).
+            dim_x = vp_x + VP_W + 2.5
+            # У col=1 (right column) page right margin = 200; нужен ~6mm под текст.
+            page_right = PAGE_W_MM - MARGIN_MM
+            if dim_x + 5 <= page_right
+              draw_dim_vertical(doc, page, layer, dim_x,
+                                vp_y + 3, vp_y + VP_H - 3, "#{ab[:depth]}")
+            end
+          end
+        end
+
+        def draw_dim_horizontal(doc, page, layer, x1, x2, line_y, label)
+          add_rect(doc, page, layer, x1, line_y, x2 - x1, DIM_LINE_W_MM)
+          add_rect(doc, page, layer, x1,                 line_y - DIM_TICK_HALF_MM, DIM_LINE_W_MM, DIM_TICK_HALF_MM * 2)
+          add_rect(doc, page, layer, x2 - DIM_LINE_W_MM, line_y - DIM_TICK_HALF_MM, DIM_LINE_W_MM, DIM_TICK_HALF_MM * 2)
+          text_w = 24
+          cx = (x1 + x2) / 2.0
+          add_text_center(doc, page, layer, cx - text_w / 2.0, line_y - 3.5, text_w, 3, "#{label} мм")
+        end
+
+        def draw_dim_vertical(doc, page, layer, line_x, y1, y2, label)
+          add_rect(doc, page, layer, line_x, y1, DIM_LINE_W_MM, y2 - y1)
+          add_rect(doc, page, layer, line_x - DIM_TICK_HALF_MM, y1,                 DIM_TICK_HALF_MM * 2, DIM_LINE_W_MM)
+          add_rect(doc, page, layer, line_x - DIM_TICK_HALF_MM, y2 - DIM_LINE_W_MM, DIM_TICK_HALF_MM * 2, DIM_LINE_W_MM)
+          text_w = 12
+          text_h = 3
+          cy = (y1 + y2) / 2.0
+          add_text_center(doc, page, layer, line_x + 0.5, cy - text_h / 2.0, text_w, text_h, "#{label} мм")
+        end
+
+        # Компактная подпись над viewport: только инфа о ДЕТАЛИ.
+        # Размеры конструкции рисуются размерными линиями вокруг viewport
+        # (`draw_viewport_dim_h/v`), не дублируем их в подписи — иначе
+        # текст не вмещается в 92.5mm и наезжает на соседний viewport.
+        def augment_label(vp, _ab, piece)
+          return vp[:label] if piece.nil?
+          "#{vp[:label]} · #{piece[:label]}"
+        end
+
+        # Возвращает форматированный размер «1350 × 1350 мм» / «1350 мм».
+        # Скрывает нулевую ось (для плоской рамы).
+        def format_dims(a, b)
           if a > 0 && b > 0
-            "#{vp[:label]} (#{a} × #{b} мм)"
+            "#{a} × #{b} мм"
           elsif a > 0 || b > 0
-            d = [a, b].max
-            "#{vp[:label]} (#{d} мм)"
+            "#{[a, b].max} мм"
           else
-            vp[:label]
+            nil
+          end
+        end
+
+        # Размер одной детали — типоразмер + длина. Если все детали одинаковые,
+        # показываем «40×40×2 L=1350». Если разные — только сечение трубы (если
+        # тоже одно), иначе nil.
+        def piece_dims_mm(model)
+          groups = group_rect_tubes(model)
+          return nil if groups.empty?
+          typesizes = groups.values.map { |d| d[:typesize] }.uniq
+          lengths   = groups.values.map { |d| d[:length_mm] }.uniq
+          if typesizes.size == 1 && lengths.size == 1
+            { label: "#{typesizes.first} · L=#{lengths.first} мм" }
+          elsif typesizes.size == 1
+            { label: typesizes.first.to_s }
+          else
+            nil
           end
         end
 
