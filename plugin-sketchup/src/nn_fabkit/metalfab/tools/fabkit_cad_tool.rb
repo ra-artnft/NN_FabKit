@@ -463,16 +463,28 @@ module NN
             raise "На конце #{tube.definition.name} уже mitre #{existing_cut.round(1)}°. Сначала Ctrl+Z."
           end
 
-          # Trim: shift transformation если joint at z=0; обновить length_mm
+          # CRITICAL (v0.11.12): auto make_unique если definition shared.
+          # Страховка от user-skip Make Unique button. Без этого apply mitre
+          # на одной trubе модифицировал shared definition → соседняя «удлинялась».
+          if tube.definition.instances.length > 1
+            old_def_name = tube.definition.name
+            tube.make_unique
+            puts "[FabKitCadTool] auto make_unique pid=#{tube.persistent_id}: " \
+                 "#{old_def_name} → #{tube.definition.name}"
+            params = AttrDict.read_rect_tube_params(tube.definition) || params
+          end
+
+          # Trim: shift transformation если joint at z=0; обновить length_mm.
+          # CRITICAL (v0.11.12): pure translation × old_transformation сохраняет
+          # rotation TOOH (без FP drift). Прежний подход через .axes() rebuild
+          # пере-вычислял xaxis/yaxis/zaxis из old_t каждый apply, накапливая
+          # FP errors в orthonormal basis → tubes «крутились» на 0.01° после
+          # ~5 операций.
           if trim_data
             if trim_data[:new_origin_world]
               old_t = tube.transformation
-              x_axis = Geom::Vector3d.new(1, 0, 0).transform(old_t)
-              y_axis = Geom::Vector3d.new(0, 1, 0).transform(old_t)
-              z_axis = Geom::Vector3d.new(0, 0, 1).transform(old_t)
-              tube.transformation = Geom::Transformation.axes(
-                trim_data[:new_origin_world], x_axis, y_axis, z_axis
-              )
+              delta = trim_data[:new_origin_world] - old_t.origin
+              tube.transformation = Geom::Transformation.translation(delta) * old_t
             end
             params = params.merge(length_mm: trim_data[:new_length_mm])
           end

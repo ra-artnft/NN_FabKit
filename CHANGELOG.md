@@ -2,6 +2,16 @@
 
 Формат — по [Keep a Changelog](https://keepachangelog.com/ru/1.1.0/). Версии монорепо независимы от версии плагина; версия плагина живёт в `plugin-sketchup/src/nn_fabkit/version.rb`.
 
+## [v0.0.34] — 2026-04-27
+
+### Fixed (transformation drift + shared definition)
+- **Плагин 0.11.11 → 0.11.12** — feedback: «соседняя труба удлиняется» после apply cut. Две root причины обнаружены через MCP диагностику.
+- **(1) Transformation drift**: в `apply_to_one_tube` shift transformation.origin для `end_axis=-1` делался через `Geom::Transformation.axes(origin, x_axis, y_axis, z_axis)` с пере-вычислением осей из `old_transformation`. Это accumulated FP errors в orthonormal basis на каждый apply — после ~5 операций tubes начинали «крутиться» (zaxis (0, 0.0067, 1) вместо (0, 0, 1)) и origin'ы drift'или (0, -7, -13) вместо (0, 0, 10). **Fix**: `Geom::Transformation.translation(delta) * old_transformation`. Pure translation сохраняет rotation TOOH. Verified MCP: zaxis до и после apply совпадают на 8 знаков после запятой.
+- **(2) Shared definition**: если две trubы имели общий definition (создано через SU Move+Ctrl, или Make Unique button cancel'нута), apply mitre на ОДНОЙ trubе модифицировал shared definition → ОБА instance меняются. Это и было «соседняя удлиняется». **Fix**: `apply_to_one_tube` auto-выполняет `tube.make_unique` если `definition.instances.length > 1`. Страховка независимая от Make Unique button.
+
+### Modified
+- `plugin-sketchup/src/nn_fabkit/metalfab/tools/fabkit_cad_tool.rb` — `apply_to_one_tube` (auto make_unique + translation × old_t).
+
 ## [v0.0.33] — 2026-04-27
 
 ### Fixed (Cut tilt direction restoration on opposite end)
