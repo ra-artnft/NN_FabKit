@@ -2,6 +2,77 @@
 
 Формат — по [Keep a Changelog](https://keepachangelog.com/ru/1.1.0/). Версии монорепо независимы от версии плагина; версия плагина живёт в `plugin-sketchup/src/nn_fabkit/version.rb`.
 
+## [v0.0.35] — 2026-04-27
+
+### Fixed (FabKit CAD: остаточные геометрические баги)
+
+- **Плагин 0.11.12 → 0.12.0** — добиты три остаточных бага из v0.11.x roadmap.
+
+#### (1) Joint angle через joint-to-far vectors (тупой L и Y-joint configurations)
+- **Был**: `acos(axis_a.dot(axis_b).abs)` использовал local +Z axes труб, игнорируя `end_axis_sign`. Это давало правильный mitre **только** когда обе трубы ориентированы так, что local +Z указывает «away from joint» (классическая конфигурация L-corner с обеими end_axis=+1). В других конфигурациях формула ломалась:
+  - **Y-joint, обе end_axis=−1** (origin каждой трубы = joint, +Z указывает к far): для θ=60° между трубами правильный mitre = (180−60)/2 = 60°, но `axis_a.dot(axis_b) = cos(60°) = 0.5` → acute = 60° → mitre **30°**. Wrong.
+  - **Mixed end_axis** (одна +1, другая −1): тоже даёт wrong результат.
+  - Также `angle_between_deg` в UI label всегда показывался как acute (≤ 90°), даже для тупого θ=120° — путаница в preview text.
+- **Стало**: `theta_deg` считается из joint-to-far vectors `v_a = far_a − end_a_at_joint` и `v_b = far_b − end_b_at_joint`. `dot(v_a, v_b)` даёт правильный joint angle [0..180°] независимо от end_axis sign convention'ов. Формула `mitre = (180 − θ)/2`. Корректно для всего диапазона:
+  - θ=60° (острый Y/K) → mitre 60°
+  - θ=90° (perpendicular L) → mitre 45°
+  - θ=120° (тупой L) → mitre 30°
+  - θ=180° (collinear butt) → mitre 0° (perpendicular cut)
+- Preview/status text теперь показывают честный joint angle: «Mitre 30.0° (joint 120.0° между трубами)».
+
+#### (2) Skew axes detection
+- **Был**: если оси двух труб не пересекались в одной точке (skew distance > 0), `Geom.closest_points` возвращал две разные точки; `compute_trim` для каждой трубы trim'ил endpoint до её собственной closest_point. Endpoints труб НЕ совпадали — между ними оставался видимый зазор размером со skew distance. Tilt direction'ы тоже выбирались независимо → визуальный artifact на стыке.
+- **Стало**: после `Geom.closest_points` явная проверка `skew_dist > 1mm` (`SKEW_TOLERANCE_MM`). При превышении — `find_joint` возвращает nil с `@last_error_reason = :skew_axes`. `analyze_selection` показывает messagebox с указанием размера skew и инструкцией: «Подвинь одну из труб так, чтобы её ось пересеклась с осью другой». Геометрически невозможно сделать чистый mitre на skew axes — лучше явный отказ, чем silent gap.
+
+#### (3) Параллельные трубы
+- **Был**: при `dot=±1` (axes parallel/anti-parallel) `mitre_angle` вычислялся как 0° или 90°, апплай давал degenerate cut.
+- **Стало**: `theta_deg < 1°` детектируется как `:parallel` → messagebox «Mitre joint геометрически не определён».
+
+### Changed (snap markers всегда видны)
+
+- **Плагин 0.11.12 → 0.12.0** — feedback: «эти инпойнты, куда ориентироваться при магничивании, должны показываться сразу же, всегда».
+- До v0.12.0 snap markers в 8 углах bbox каждой трубы были `Sketchup::ConstructionPoint` (`add_cpoint`). Visible **только** при `View → Construction Geometry` ON (model-level toggle). Если выкл — snap inference работало, но markers были невидимые → непонятно, к чему magnetism цепляется.
+- **Стало**: 8 углов × 3 коротких edges (X+Y+Z кресты по 1.5mm half-length) = 24 edges на трубу, на отдельном Tag/Layer `FabKit::SnapMarkers` с magenta color. Edges рендерятся всегда независимо от `View → Construction Geometry`. Их endpoints дают тот же Endpoint snap inference. Layer создаётся один раз при первом build трубы; пользователь может скрыть его в Tags panel если визуально мешает (snap продолжит работать пока Tag visible).
+
+### Modified
+- `plugin-sketchup/src/nn_fabkit/metalfab/tools/fabkit_cad_tool.rb` — `find_joint` (joint-to-far theta calculation, skew detection, parallel guard); `analyze_selection` (case по `@last_error_reason` с разными UI messages); добавлена `SKEW_TOLERANCE_MM` constant.
+- `plugin-sketchup/src/nn_fabkit/metalfab/profile_generator/rect_tube.rb` — `add_bbox_snap_points` → `add_bbox_snap_markers` (edges-based, dedicated Layer); добавлены `ensure_snap_marker_layer`, `SNAP_MARKER_LAYER`, `SNAP_MARKER_HALF_MM`, `SNAP_MARKER_COLOR`.
+
+### Added (LayOut integration: cut-list template)
+
+- Первая интеграция с LayOut Ruby API. LayOut SDK живёт **внутри SketchUp process** (`Layout::Document`, `Layout::Page`, `Layout::Rectangle`, `Layout::FormattedText`, `Layout::SketchUpModel`, …) — отдельный extension под LayOut НЕ нужен (LayOut на Windows не имеет Extension Manager). Все handlers через тот же MCP/TCP сервер плагина.
+- Новый namespace `NN::MetalFab::LayoutGen` (имя `Layout` зарезервировано LayOut SDK) в [plugin-sketchup/src/nn_fabkit/metalfab/layout/template_cut_list.rb](plugin-sketchup/src/nn_fabkit/metalfab/layout/template_cut_list.rb).
+- Метод `TemplateCutList.generate(output_path:, meta:)` создаёт A4 portrait .layout с:
+  - **Title block** в правом верхнем углу — проект, заказчик, дата, масштаб; реквизиты пока хардкод-default'ы, перекрываются опциональным `meta` хэшем.
+  - **3D viewport** на активную SketchUp-модель через `Layout::SketchUpModel`. Перед save: `view.zoom_extents` + `model.save` чтобы embedded-view взял свежую camera (Layout читает .skp с диска, не in-memory).
+  - **Cut-list table** внизу — группировка `rect_tube` инстансов из активной сцены по `nn_metalfab.typesize`, колонки № / Типоразмер / ГОСТ / Сталь / Кол-во / Σ Длина / Σ Масса + строка ИТОГО.
+- Документ в **миллиметрах** (`Layout::Document::DECIMAL_MILLIMETERS`, precision 0.1mm).
+- `TemplateCutList.export_pdf(layout_path:, pdf_path:)` — обёртка над `Layout::Document#export`.
+- 2 новых MCP handlers в [plugin-sketchup/src/nn_fabkit/mcp/handlers.rb](plugin-sketchup/src/nn_fabkit/mcp/handlers.rb):
+  - `layout_create_template(path, meta?)` — генерация .layout
+  - `layout_export_pdf(layout_path, pdf_path)` — PDF export
+- Соответствующие Python wrappers в [mcp-bridge/src/nn_fabkit_mcp/server.py](mcp-bridge/src/nn_fabkit_mcp/server.py).
+- Loose end: `Layout::FormattedText.new("")` бросает `ArgumentError: empty string` — добавлен guard в `add_text_center`.
+- Loose end: file lock — если .layout открыт в LayOut, save fails с `Errno::EACCES`. Текущая семантика — propagate ошибку наверх (handler raise → MCP error).
+
+### Подсистемная навигация (CLAUDE.md)
+
+- Новый раздел [«Подсистемы — адресация корректировок»](CLAUDE.md) — матрица 2×2 `{MetalFab, MebelFab} × {SketchUp, LayOut}` + общее ядро (FabKit umbrella) + standalone NC.
+- Эвристика выбора подсистемы по запросу: «труба / mitre / IGES» → MetalFab × SketchUp; «чертёж металла / cut-list» → MetalFab × LayOut; «шкаф / ЛДСП» → MebelFab × SketchUp; и т.д.
+- Stub-папки с README под будущий код:
+  - [plugin-sketchup/src/nn_fabkit/metalfab/layout/](plugin-sketchup/src/nn_fabkit/metalfab/layout/) — теперь **не stub**, есть первый template (`template_cut_list.rb`)
+  - [plugin-sketchup/src/nn_fabkit/mebelfab/](plugin-sketchup/src/nn_fabkit/mebelfab/) — stub (skp/ + layout/ под мебельную ветку, ждём вводных от заказчика)
+
+### Deferred (TODO следующих версий)
+- **Asymmetric mitre** (разные сечения труб). Bisecting plane та же, но external contours не совпадают edge-to-edge. Решение — отдельный cope joint mode (v0.13+).
+- **T-joint butt** (perpendicular cut на brace). См. roadmap §10.
+- **T-joint notch** (envelope cope rect-on-rect).
+- **X-cross 4-tube symmetric**.
+- **Round tube mitre + fishmouth cope**.
+- **LayOut: параметризация title block** через UI dialog или `nn_metalfab.project_*` attrs (сейчас reverse path — реквизиты в `meta` хэше handler'а).
+- **LayOut: scenes binding** (выбор `Layout::SketchUpModel#current_scene` по индексу — текущая логика берёт default view модели после `zoom_extents`).
+- **LayOut: assembly drawings** — отдельный template с многостраничным views (front/top/side), отдельная задача от cut-list.
+
 ## [v0.0.34] — 2026-04-27
 
 ### Fixed (transformation drift + shared definition)

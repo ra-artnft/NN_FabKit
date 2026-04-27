@@ -42,7 +42,7 @@ module NN
           smooth_arc_edges_in_profile(profile_face, width_mm, height_mm)
           extrude(ents, profile_face, length_mm)
           smooth_vertical_arc_edges(ents, length_mm, width_mm, height_mm)
-          add_bbox_snap_points(ents, width_mm, height_mm, length_mm)
+          add_bbox_snap_markers(definition.model, ents, width_mm, height_mm, length_mm)
 
           AttrDict.write_rect_tube(
             definition,
@@ -226,21 +226,53 @@ module NN
                "faces=#{faces}/#{FACES_LIMIT}, edges=#{edges}/#{EDGES_LIMIT}"
         end
 
-        # Construction points в 8 углах bounding box компонента — чтобы SU
-        # snap inference (cursor inference при создании/перемещении другой
-        # детали) ловил ровно прямоугольные углы W×H, а не вершины на
-        # rounded corners (8 segments × radius), которые physically лежат
-        # внутри bbox и сдвигают snap target от ожидаемого «угла трубы».
-        # ConstructionPoint визуально — крошечный «+» symbol, едва заметный,
-        # можно скрыть глобально через View → Construction Geometry если
-        # мешает. Snap к нему имеет высокий priority как Endpoint inference.
-        def self.add_bbox_snap_points(entities, width_mm, height_mm, length_mm)
+        # Snap markers в 8 углах bounding box компонента — чтобы SU snap
+        # inference (cursor inference при создании/перемещении другой детали)
+        # ловил ровно прямоугольные углы W×H, а не вершины на rounded corners
+        # (8 segments × radius), которые physically лежат внутри bbox и
+        # сдвигают snap target от ожидаемого «угла трубы».
+        #
+        # До v0.12.0 использовали ConstructionPoint (`add_cpoint`) — но они
+        # видны ТОЛЬКО при View → Construction Geometry ON (model-level
+        # toggle). Если у пользователя выкл — snap всё ещё работал, но
+        # markers были невидимые: визуально непонятно, к чему magnetism
+        # цепляется.
+        #
+        # С v0.12.0 — короткие 3D-кресты из 6 edges на каждый угол bbox,
+        # на отдельном Tag/Layer "FabKit::SnapMarkers" с magenta-материалом.
+        # Edges всегда рендерятся (не зависят от View toggle); их endpoints
+        # дают тот же Endpoint snap inference. Layer создаётся один раз;
+        # пользователь может скрыть его в Tags panel если мешает (snap
+        # продолжит работать пока Tag visible).
+        SNAP_MARKER_LAYER = "FabKit::SnapMarkers".freeze
+        SNAP_MARKER_HALF_MM = 1.5
+        SNAP_MARKER_COLOR = Sketchup::Color.new(255, 0, 255)  # magenta
+
+        def self.ensure_snap_marker_layer(model)
+          layer = model.layers[SNAP_MARKER_LAYER]
+          return layer if layer
+          layer = model.layers.add(SNAP_MARKER_LAYER)
+          layer.visible = true
+          layer
+        end
+
+        def self.add_bbox_snap_markers(model, entities, width_mm, height_mm, length_mm)
+          layer = ensure_snap_marker_layer(model)
           hw = width_mm.mm / 2.0
           hh = height_mm.mm / 2.0
+          s  = SNAP_MARKER_HALF_MM.mm
           [0, length_mm.mm].each do |z|
             [-hw, +hw].each do |x|
               [-hh, +hh].each do |y|
-                entities.add_cpoint(Geom::Point3d.new(x, y, z))
+                e1 = entities.add_line([x - s, y, z], [x + s, y, z])
+                e2 = entities.add_line([x, y - s, z], [x, y + s, z])
+                e3 = entities.add_line([x, y, z - s], [x, y, z + s])
+                [e1, e2, e3].each do |edge|
+                  next unless edge && edge.valid?
+                  edge.layer   = layer
+                  edge.material = SNAP_MARKER_COLOR
+                  edge.casts_shadows = false
+                end
               end
             end
           end

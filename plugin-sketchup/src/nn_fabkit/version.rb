@@ -2,6 +2,6 @@
 
 module NN
   module FabKit
-    VERSION = "0.11.12"
+    VERSION = "0.12.0"
   end
 end

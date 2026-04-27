@@ -79,6 +79,33 @@ module NN
           }
         end
 
+        # layout_create_template — A4 portrait LayOut-документ для активной
+        # SU-сцены: title block + 3D viewport + cut-list по rect_tube
+        # инстансам. Реквизиты meta перекрывают default'ы (project, customer,
+        # date, scale, header).
+        register("layout_create_template") do |params|
+          path = params["path"].to_s
+          raise ArgumentError, "params.path is required (.layout output path)" if path.empty?
+          meta = params["meta"]
+          meta = nil unless meta.is_a?(Hash)
+          NN::MetalFab::LayoutGen::TemplateCutList.generate(
+            output_path: path,
+            meta: meta
+          )
+        end
+
+        # layout_export_pdf — экспортирует существующий .layout в PDF.
+        register("layout_export_pdf") do |params|
+          src = params["layout_path"].to_s
+          dst = params["pdf_path"].to_s
+          raise ArgumentError, "params.layout_path is required" if src.empty?
+          raise ArgumentError, "params.pdf_path is required" if dst.empty?
+          NN::MetalFab::LayoutGen::TemplateCutList.export_pdf(
+            layout_path: src,
+            pdf_path: dst
+          )
+        end
+
         # ----- Helpers -----
 
         def serialize_value(v)

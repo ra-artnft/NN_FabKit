@@ -23,6 +23,11 @@ module NN
         DEFAULT_ANGLE_DEG = 45.0
         # Tolerance для «ends близко друг к другу» — в долях от max width.
         JOINT_TOLERANCE_FACTOR = 2.0
+        # Skew axes tolerance: если оси не пересекаются точно (closest_points
+        # дают 2 разные точки на расстоянии > этого значения, мм) — joint
+        # отклоняется. Геометрически невозможно «дотянуть» обе трубы до общей
+        # точки изменением length: пришлось бы двигать каждую off-axis.
+        SKEW_TOLERANCE_MM = 1.0
 
         # ----------------------------------------------------------------
         # SU Tool lifecycle
@@ -126,15 +131,42 @@ module NN
             return
           end
 
+          @last_error_reason = nil
+          @last_skew_distance_mm = nil
           @joint = find_joint(tubes[0], tubes[1])
           if @joint.nil?
-            @state = :no_joint
-            @message = "FabKit CAD: 2 трубы выбраны, но их концы не сходятся. Расположи концами к точке стыка."
-            puts "[FabKitCadTool] no joint detected"
-            ::UI.messagebox(
-              "Эти 2 трубы не сходятся концами. Расположи их так, чтобы по одному " \
-              "концу каждой было близко друг к другу."
-            )
+            case @last_error_reason
+            when :skew_axes
+              @state = :skew_axes
+              skew_str = format("%.2f", @last_skew_distance_mm || 0.0)
+              @message = "FabKit CAD: оси труб не пересекаются (skew=#{skew_str} мм). Подвинь одну трубу так, чтобы оси встретились."
+              puts "[FabKitCadTool] skew axes: #{skew_str} mm"
+              ::UI.messagebox(
+                "Оси этих 2 труб не пересекаются в одной точке " \
+                "(расстояние между ними = #{skew_str} мм > #{SKEW_TOLERANCE_MM} мм).\n\n" \
+                "Mitre joint требует, чтобы оси сходились — иначе геометрически " \
+                "невозможно сделать стык без зазора (трубу пришлось бы двигать " \
+                "перпендикулярно своей оси).\n\n" \
+                "Подвинь одну из труб так, чтобы её ось пересеклась с осью другой, " \
+                "и запусти FabKit CAD заново."
+              )
+            when :parallel
+              @state = :parallel
+              @message = "FabKit CAD: трубы параллельны, mitre не определён."
+              puts "[FabKitCadTool] parallel tubes — no mitre defined"
+              ::UI.messagebox(
+                "Эти 2 трубы параллельны (или коллинеарны и направлены в одну сторону). " \
+                "Mitre joint геометрически не определён."
+              )
+            else
+              @state = :no_joint
+              @message = "FabKit CAD: 2 трубы выбраны, но их концы не сходятся. Расположи концами к точке стыка."
+              puts "[FabKitCadTool] no joint detected"
+              ::UI.messagebox(
+                "Эти 2 трубы не сходятся концами. Расположи их так, чтобы по одному " \
+                "концу каждой было близко друг к другу."
+              )
+            end
             ::Sketchup.active_model.select_tool(nil)
             return
           end
@@ -220,38 +252,67 @@ module NN
           return nil if best.nil?
           return nil if best[:dist] > tolerance.mm
 
-          # Угол между осями (в world coords)
-          axis_a = tube_axis_world(tube_a)
-          axis_b = tube_axis_world(tube_b)
+          # Joint angle θ — full angle (0..180°) между трубами в стыке.
+          # Считается из joint-to-far vectors (от near-endpoint каждой трубы
+          # к её far-endpoint), а НЕ из axis vectors с .abs. Это даёт правильный
+          # угол для любого θ, включая тупой L (θ > 90°).
+          #
+          # Семантика:
+          #   90°  — perpendicular L → mitre 45°
+          #   60°  — острый L (Y-brace) → mitre 60°
+          #   120° — тупой L → mitre 30°
+          #   180° — collinear butt → mitre 0° (perpendicular cut)
+          #
+          # Old bug (до v0.12.0): use .abs всегда сворачивал угол в [0, 90°],
+          # для 120° давало mitre 60° вместо 30°.
+          ends_a_all = tube_endpoints(tube_a)
+          ends_b_all = tube_endpoints(tube_b)
+          far_a = ends_a_all.find { |e| e[:end_axis] != best[:end_a][:end_axis] }
+          far_b = ends_b_all.find { |e| e[:end_axis] != best[:end_b][:end_axis] }
 
-          # Учитываем направления концов: end_axis_sign +1 значит конец на +Z
-          # стороне local axis. Для joint axes должны "сходиться" друг к другу,
-          # т.е. концы должны смотреть навстречу. Возможно нужна нормализация
-          # через end_axis_sign — для simplicity используем abs(dot).
-          dot = axis_a.dot(axis_b).clamp(-1.0, 1.0)
-          angle_between_rad = Math.acos(dot.abs)
-          angle_between_deg = angle_between_rad * 180.0 / Math::PI
+          v_a = (far_a[:point] - best[:end_a][:point])
+          v_b = (far_b[:point] - best[:end_b][:point])
+          if v_a.length < 1.0e-9 || v_b.length < 1.0e-9
+            return nil
+          end
+          v_a.normalize!
+          v_b.normalize!
+          dot_jf = v_a.dot(v_b).clamp(-1.0, 1.0)
+          theta_rad = Math.acos(dot_jf)
+          theta_deg = theta_rad * 180.0 / Math::PI
 
-          # Mitre angle: для 90° corner = 45°.
-          # Формула: mitre = (180 - 2*angle_between_supplementary) / 2 = 90 - angle_between/2
-          # Wait — let's think carefully.
-          # If two tubes meet at 90° angle (perpendicular), each gets 45° mitre.
-          # angle_between (acute) = 90°. mitre = 45°.
-          # Formula: mitre = angle_between / 2.
-          # If two tubes are parallel (angle_between=0°): no mitre (or 0).
-          # If two tubes are at 60°: each gets 30° mitre.
-          # → mitre = angle_between / 2  (for symmetric joint)
-          mitre_angle = angle_between_deg / 2.0
+          # Защита: при theta ≈ 0 трубы параллельны и идут в одну сторону
+          # (overlap, не joint). Mitre геометрически не определён.
+          if theta_deg < 1.0
+            @last_error_reason = :parallel
+            return nil
+          end
+
+          mitre_angle = (180.0 - theta_deg) / 2.0
 
           # Joint point: ОСЬ-ИНТЕРСЕКЦИЯ через Geom.closest_points.
           # Не midpoint endpoints (тот off-axis от обеих труб) — а точка, где
-          # пересекаются (или ближе всего сходятся) оси. Для perpendicular L
-          # с пересекающимися axes это exactly intersection. Для skew axes
-          # (offset в 3D) — два разных closest_point'а, берём midpoint.
+          # пересекаются (или ближе всего сходятся) оси.
+          axis_a = tube_axis_world(tube_a)
+          axis_b = tube_axis_world(tube_b)
           line_a = [tube_a.transformation.origin, axis_a]
           line_b = [tube_b.transformation.origin, axis_b]
           closest = Geom.closest_points(line_a, line_b)
+
+          # Skew detection: если оси не пересекаются в одной точке (closest[0]
+          # != closest[1]), геометрически нельзя дотянуть обе трубы до общей
+          # точки одной только сменой length — пришлось бы двигать оси off-line.
+          # Раньше тихо trim'или каждую к своей closest_point → видимый gap
+          # на стыке. Теперь явно abort'имся.
+          skew_dist_mm = closest[0].distance(closest[1]).to_mm
+          if skew_dist_mm > SKEW_TOLERANCE_MM
+            @last_error_reason = :skew_axes
+            @last_skew_distance_mm = skew_dist_mm
+            return nil
+          end
           jp = Geom::Point3d.linear_combination(0.5, closest[0], 0.5, closest[1])
+
+          angle_between_deg = theta_deg
 
           # Trim params: каждая труба резается до СВОЕЙ closest_point (на её axis).
           # new_length = distance от far endpoint до этой точки.

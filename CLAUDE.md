@@ -46,6 +46,45 @@ NN_FabKit/
 └── *.skp_dump.json       # пробные дампы из knowledge-base/tools/skp_dump.rb
 ```
 
+## Подсистемы — адресация корректировок
+
+Когда пользователь говорит «в **MetalFab** в **SketchUp** надо …», «в **MetalFab** по **IGES** …», «в общем ядре …» — ниже карта, в какую папку идти. Структура: ветка ({MetalFab, MebelFab}) × три «оси» — **SketchUp** (3D-моделирование), **LayOut** (чертежи для человека), **Outputs** (файлы для production: CNC, лазер, плазма, BOM-CSV) + общее ядро.
+
+| Подсистема | Namespace | Где код | Статус |
+|---|---|---|---|
+| **Общее ядро (FabKit)** — оболочка, MCP-мост, UI-каркас, updater, version | `NN::FabKit` | [plugin-sketchup/src/nn_fabkit/](plugin-sketchup/src/nn_fabkit/) — корень + [main.rb](plugin-sketchup/src/nn_fabkit/main.rb), [ui/](plugin-sketchup/src/nn_fabkit/ui/), [mcp/](plugin-sketchup/src/nn_fabkit/mcp/), [commands/](plugin-sketchup/src/nn_fabkit/commands/), [updater.rb](plugin-sketchup/src/nn_fabkit/updater.rb), [version.rb](plugin-sketchup/src/nn_fabkit/version.rb), [skp_dump.rb](plugin-sketchup/src/nn_fabkit/skp_dump.rb) | ✅ есть |
+| **MetalFab × SketchUp** — генераторы профилей, FabKit CAD tool, attr-dict, каталоги | `NN::MetalFab` | [plugin-sketchup/src/nn_fabkit/metalfab/](plugin-sketchup/src/nn_fabkit/metalfab/) (всё кроме `layout/` и `outputs/`): [profile_generator/](plugin-sketchup/src/nn_fabkit/metalfab/profile_generator/), [tools/](plugin-sketchup/src/nn_fabkit/metalfab/tools/), [commands/](plugin-sketchup/src/nn_fabkit/metalfab/commands/), [catalogs/](plugin-sketchup/src/nn_fabkit/metalfab/catalogs/), [attr_dict.rb](plugin-sketchup/src/nn_fabkit/metalfab/attr_dict.rb), [catalog.rb](plugin-sketchup/src/nn_fabkit/metalfab/catalog.rb), [dc_attrs.rb](plugin-sketchup/src/nn_fabkit/metalfab/dc_attrs.rb) | ✅ есть |
+| **MetalFab × LayOut** — A4 шаблоны, cut-list table, title block, multi-viewport (Iso/Top/Front/Right) | `NN::MetalFab::LayoutGen` | [plugin-sketchup/src/nn_fabkit/metalfab/layout/](plugin-sketchup/src/nn_fabkit/metalfab/layout/) | ✅ есть (template_cut_list) |
+| **MetalFab × Outputs (IGES, DXF)** — файлы выдачи для production: IGES wireframe (плагин) + IGES surface (standalone Python) + DXF лист (TODO) | mixed (Ruby `NN::MetalFab::IgesExporter` + Python `nn_fabkit_nc_export`) | [plugin-sketchup/src/nn_fabkit/metalfab/outputs/](plugin-sketchup/src/nn_fabkit/metalfab/outputs/) — README + dxf/ stub; existing: [iges_exporter/](plugin-sketchup/src/nn_fabkit/metalfab/iges_exporter/) (плагин), [app-desktop/nc-export/](app-desktop/nc-export/) (Python) | ⚙️ частично (IGES есть, DXF — TODO) |
+| **MebelFab × SketchUp** — листовые детали ЛДСП/фанера, шкафы, кромка, фурнитура | `NN::MebelFab::Skp` (план) | [plugin-sketchup/src/nn_fabkit/mebelfab/skp/](plugin-sketchup/src/nn_fabkit/mebelfab/skp/) — пока stub | ⏸ ждём вводных от заказчика |
+| **MebelFab × LayOut** — сборочные чертежи мебели, BOM, карты раскроя через OCL | `NN::MebelFab::Layout` (план) | [plugin-sketchup/src/nn_fabkit/mebelfab/layout/](plugin-sketchup/src/nn_fabkit/mebelfab/layout/) — пока stub | ⏸ ждём вводных |
+| **MebelFab × Outputs** — карты раскроя плит, спецификация фурнитуры, G-code для ЧПУ | (план) | [plugin-sketchup/src/nn_fabkit/mebelfab/outputs/](plugin-sketchup/src/nn_fabkit/mebelfab/outputs/) — пока stub | ⏸ ждём вводных |
+
+**Как читать таблицу**:
+- **SketchUp ось** = 3D-моделирование, генерация компонентов, инструменты редактирования. Папки `*/` (для MetalFab напрямую — исторически).
+- **LayOut ось** = чертежи **для человека** (PDF/печать, листы A4, viewport'ы, таблицы, размеры). Папки `*/layout/`.
+- **Outputs ось** = файлы **для машин** (CNC, лазер, плазма, фрезер, плоттер; CSV/BOM для поставщика). Папки `*/outputs/`. **НЕ путать с LayOut**: LayOut → человек смотрит, Outputs → станок читает.
+- **Общее ядро** — MCP-мост, UI-меню, updater, version, общий `dump_model`. Не привязано к ветке.
+
+**Stub-папки** (`*/outputs/dxf/`, `mebelfab/skp/`, `mebelfab/layout/`, `mebelfab/outputs/`) сейчас содержат только README с описанием будущего scope. Это **намеренно**: даёт явное место под будущий код и якорь для адресации запросов уже сейчас. При появлении кода — конвертируем README → реальный namespace + файлы.
+
+### Эвристика выбора подсистемы по запросу пользователя
+
+| Если пользователь говорит … | Подсистема | Файл/папка |
+|---|---|---|
+| «труба / лист / уголок / швеллер / профиль / `rect_tube`» | MetalFab × SketchUp | [profile_generator/](plugin-sketchup/src/nn_fabkit/metalfab/profile_generator/) |
+| «FabKit CAD / mitre joint / 2 трубы выделить / стык» | MetalFab × SketchUp | [tools/fabkit_cad_tool.rb](plugin-sketchup/src/nn_fabkit/metalfab/tools/fabkit_cad_tool.rb) |
+| «чертёж металла / cut-list / PDF / title block / viewport / A4» | MetalFab × LayOut | [layout/template_cut_list.rb](plugin-sketchup/src/nn_fabkit/metalfab/layout/template_cut_list.rb) |
+| «по IGES (wireframe) / .igs из плагина» | MetalFab × Outputs (плагин) | [iges_exporter/wireframe.rb](plugin-sketchup/src/nn_fabkit/metalfab/iges_exporter/wireframe.rb) |
+| «по IGES (surface) / для laser tube cutter / для CAM» | MetalFab × Outputs (standalone) | [app-desktop/nc-export/](app-desktop/nc-export/) (Python) |
+| «по DXF / лист / плазма / лазер на лист» | MetalFab × Outputs (DXF) | [outputs/dxf/](plugin-sketchup/src/nn_fabkit/metalfab/outputs/dxf/) — TODO |
+| «шкаф / полка / тумба / ЛДСП / фанера / кромка / евровинт» | MebelFab × SketchUp | [mebelfab/skp/](plugin-sketchup/src/nn_fabkit/mebelfab/skp/) — stub |
+| «чертёж мебели / спецификация мебели в LayOut» | MebelFab × LayOut | [mebelfab/layout/](plugin-sketchup/src/nn_fabkit/mebelfab/layout/) — stub |
+| «карта раскроя плиты / OCL / G-code мебельный / BOM мебели» | MebelFab × Outputs | [mebelfab/outputs/](plugin-sketchup/src/nn_fabkit/mebelfab/outputs/) — stub |
+| «MCP сервер / handler / eval_ruby / меню / updater / тулбар» | Общее ядро (FabKit) | [nn_fabkit/](plugin-sketchup/src/nn_fabkit/) корень |
+
+При неоднозначности (например «дамп модели» — общее ядро или MetalFab?) — переспросить.
+
 ## Навигация: что где править
 
 | Запрос пользователя | Файл(ы) |

@@ -65,6 +65,48 @@ def dump_model(path: str | None = None) -> dict[str, Any]:
     return _call("dump_model", {"path": path} if path else {})
 
 
+@mcp.tool()
+def layout_create_template(path: str, meta: dict[str, str] | None = None) -> dict[str, Any]:
+    """Generate an A4 portrait LayOut document with title block, 3D viewport, and cut-list table.
+
+    The cut-list groups all `rect_tube` ComponentInstances in the active SketchUp model
+    by `nn_metalfab.typesize`, with columns: № / Типоразмер / ГОСТ / Сталь / Кол-во / Σ Длина / Σ Масса
+    plus an ИТОГО row. Before saving, the active SU view runs `zoom_extents` and the .skp
+    is saved (so the embedded `Layout::SketchUpModel` viewport captures the framed model).
+
+    Currently uses millimeters (DECIMAL_MILLIMETERS, precision 0.1mm). Title block fields
+    are hardcoded defaults that `meta` can override.
+
+    Args:
+        path: output .layout file path. If the file is currently open in LayOut, save
+            will fail with `Errno::EACCES` — close it first.
+        meta: optional dict overriding title block fields. Keys: `project`, `customer`,
+            `date`, `scale`, `header`. Any omitted key falls back to the default.
+
+    Returns:
+        dict with `saved_to`, `size_kb`, `cut_list_groups`, `total_count`, `total_length_mm`,
+        `total_mass_kg`.
+    """
+    params: dict[str, Any] = {"path": path}
+    if meta:
+        params["meta"] = meta
+    return _call("layout_create_template", params)
+
+
+@mcp.tool()
+def layout_export_pdf(layout_path: str, pdf_path: str) -> dict[str, Any]:
+    """Export an existing .layout file to PDF via `Layout::Document#export`.
+
+    Args:
+        layout_path: source .layout file (must exist).
+        pdf_path: target .pdf path. Overwritten if exists.
+
+    Returns:
+        dict with `pdf_path` and `size_kb`.
+    """
+    return _call("layout_export_pdf", {"layout_path": layout_path, "pdf_path": pdf_path})
+
+
 # ----- Internal -----
 
 

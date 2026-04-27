@@ -15,6 +15,9 @@ module NN
     Sketchup.require "nn_fabkit/metalfab/commands/create_rect_tube"
     Sketchup.require "nn_fabkit/metalfab/commands/export_iges"
     Sketchup.require "nn_fabkit/metalfab/tools/fabkit_cad_tool"
+    # MetalFab × LayOut — генераторы LayOut-чертежей (cut-list, чертежи рам и т.п.)
+    Sketchup.require "nn_fabkit/metalfab/layout/template_cut_list"
+    Sketchup.require "nn_fabkit/metalfab/commands/export_layout_pdf"
 
     # FabKit зонтик — общие команды (updater и т.п.)
     Sketchup.require "nn_fabkit/updater"

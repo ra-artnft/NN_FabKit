@@ -20,6 +20,8 @@ module NN
           metalfab.add_item("Создать «Профильная труба»…")          { create_rect_tube }
           metalfab.add_item("FabKit CAD — mitre cut…")              { fabkit_cad }
           metalfab.add_separator
+          metalfab.add_item("Создать PDF cut-list…")                { export_layout_pdf }
+          metalfab.add_separator
           metalfab.add_item("Экспорт «Профильная труба» в IGES…")   { export_iges }
 
           # Submenu MCP сервер — мост Claude ⇄ SketchUp
@@ -68,6 +70,10 @@ module NN
 
         def self.export_iges
           NN::MetalFab::Commands::ExportIges.call
+        end
+
+        def self.export_layout_pdf
+          NN::MetalFab::Commands::ExportLayoutPdf.call
         end
 
         def self.check_update
